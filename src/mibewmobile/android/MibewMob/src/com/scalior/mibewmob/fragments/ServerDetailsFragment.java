@@ -1,13 +1,9 @@
 package com.scalior.mibewmob.fragments;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import com.scalior.mibewmob.ChatServerUtils;
+import com.scalior.mibewmob.ChatUtils;
 import com.scalior.mibewmob.R;
-import com.scalior.mibewmob.database.MibewMobSQLiteHelper;
-import com.scalior.mibewmob.model.ChatOperator;
 import com.scalior.mibewmob.model.ChatServer;
+import com.scalior.mibewmob.model.MonitoredSite;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -28,7 +24,6 @@ public class ServerDetailsFragment extends Fragment
 
 	// Other data elements
 	private ChatServer m_chatServer;
-	private ChatOperator m_chatOperator;
 	private OnConfirmListener m_listener;
 	
 	@Override
@@ -37,36 +32,32 @@ public class ServerDetailsFragment extends Fragment
 		m_rootView = inflater.inflate(R.layout.fragment_confirmdetails,
 				container, false);
 	
+		// TODO: This should be a logout button
 		m_confirmBtn = (Button) m_rootView.findViewById(R.id.confirm_btn);
 		m_confirmBtn.setOnClickListener(this);
 		
-		// Populate the view with server details
-		try {
-			JSONObject jServerDetails = 
-					new JSONObject(getArguments().getString("serverDetails"));
-			JSONObject jOperatorDetails = 
-					new JSONObject(getArguments().getString("operatorDetails"));
-			m_chatServer = new ChatServer(jServerDetails);
-			m_chatOperator = new ChatOperator(jOperatorDetails);
-			
-			TextView serverNametv = (TextView) m_rootView.findViewById(R.id.server_name);
-			TextView urltv = (TextView) m_rootView.findViewById(R.id.server_url);
-			//ImageView logoiv = (ImageView) m_rootView.findViewById(R.id.server_logo);
-			
-			TextView operatorNametv = (TextView) m_rootView.findViewById(R.id.operator_name);
-			TextView emailtv = (TextView) m_rootView.findViewById(R.id.operator_email);
-			//ImageView logoiv = (ImageView) m_rootView.findViewById(R.id.server_logo);
-
-//			nametv.setText(getArguments().getString("serverDetails"));
-			serverNametv.setText(jServerDetails.getString("name"));
-			urltv.setText(jServerDetails.getString("chatURL"));
-			operatorNametv.setText(jOperatorDetails.getString("commonname"));
-			emailtv.setText(jOperatorDetails.getString("email"));
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		// Populate the view with server and operator details
+		if (getArguments().containsKey("serverID")) {
+			MonitoredSite siteDetails = 
+					ChatUtils.getInstance(getActivity().getApplicationContext())
+						.getSiteWithID(getArguments().getLong("serverID"));
+			if (siteDetails != null) {
+				TextView serverNametv = (TextView) m_rootView.findViewById(R.id.server_name);
+				TextView urltv = (TextView) m_rootView.findViewById(R.id.server_url);
+				//ImageView logoiv = (ImageView) m_rootView.findViewById(R.id.server_logo);
+				
+				TextView operatorNametv = (TextView) m_rootView.findViewById(R.id.operator_name);
+				TextView emailtv = (TextView) m_rootView.findViewById(R.id.operator_email);
+				//ImageView logoiv = (ImageView) m_rootView.findViewById(R.id.server_logo);
+	
+				serverNametv.setText(siteDetails.getServer().getName());
+				urltv.setText(siteDetails.getServer().getURL());
+				operatorNametv.setText(siteDetails.getOperator().getCommonName());
+				emailtv.setText(siteDetails.getOperator().getEmail());
+			}
 		}
 
+		// TODO: If there is an error, hide all views and show a blank error view
 		return m_rootView;
 	}
 
@@ -84,11 +75,6 @@ public class ServerDetailsFragment extends Fragment
 	
 	private void confirmServer() {
 		if (m_chatServer != null) {
-			MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(getActivity());
-			boolean bServerAdded = dbHelper.addNewChatServer(m_chatServer);
-			boolean bOperatorAdded = dbHelper.addNewOperator(m_chatOperator);
-			ChatServerUtils.getInstance(getActivity()).
-				setRefreshServerList(bServerAdded || bOperatorAdded);
 			
 			m_listener.onConfirm();
 		}

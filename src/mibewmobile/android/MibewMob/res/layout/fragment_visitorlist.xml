@@ -24,7 +24,7 @@
         android:layout_marginRight="5dp"
         android:layout_marginTop="100dp"
         android:gravity="center_vertical"
-        android:text="@string/no_server"
+        android:text="@string/no_visitors"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:visibility="gone" />
 

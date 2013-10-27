@@ -12,6 +12,7 @@ public class ChatOperator {
 	private String m_commonName;
 	private String m_email;
 	private int m_permissions;
+	private long m_serverID;
 	
 	// Constructors
 	public ChatOperator(String p_token, String p_username, String p_localeName, String p_commonName,
@@ -26,13 +27,18 @@ public class ChatOperator {
 	}
 
 	
-	public ChatOperator(JSONObject p_jOperator) throws JSONException {
-		m_token = p_jOperator.getString("oprtoken");
-		m_username = p_jOperator.getString("username");
-		m_localeName = p_jOperator.getString("localename");
-		m_commonName = p_jOperator.getString("commonname");
-		m_email = p_jOperator.getString("email");
-		m_permissions = p_jOperator.getInt("permissions");
+	public ChatOperator(JSONObject p_jOperator) {
+		try {
+			m_token = p_jOperator.getString("oprtoken");
+			m_username = p_jOperator.getString("username");
+			m_localeName = p_jOperator.getString("localename");
+			m_commonName = p_jOperator.getString("commonname");
+			m_email = p_jOperator.getString("email");
+			m_permissions = p_jOperator.getInt("permissions");
+		} catch (JSONException e) {
+			throw new RuntimeException("Failed to parse the JSON operator details: " +
+							e.getMessage(), e);
+		}
 	}
 	
 
@@ -76,5 +82,15 @@ public class ChatOperator {
 	}
 	public void setPermissions(int permissions) {
 		m_permissions = permissions;
+	}
+
+
+	public long getServerID() {
+		return m_serverID;
+	}
+
+
+	public void setServerID(long serverID) {
+		m_serverID = serverID;
 	}
 }

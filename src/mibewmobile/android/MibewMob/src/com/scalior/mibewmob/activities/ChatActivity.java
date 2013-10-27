@@ -2,13 +2,10 @@ package com.scalior.mibewmob.activities;
 
 import java.util.Locale;
 
-import com.scalior.mibewmob.ChatServerUtils;
 import com.scalior.mibewmob.R;
-import com.scalior.mibewmob.R.id;
-import com.scalior.mibewmob.R.layout;
-import com.scalior.mibewmob.R.menu;
-import com.scalior.mibewmob.R.string;
-import com.scalior.mibewmob.fragments.ChatServerListFragment;
+import com.scalior.mibewmob.fragments.MonitoredSitesListFragment;
+import com.scalior.mibewmob.fragments.VisitorListFragment;
+import com.scalior.mibewmob.services.ChatService;
 
 import android.app.ActionBar;
 import android.app.FragmentTransaction;
@@ -18,9 +15,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.app.NavUtils;
 import android.support.v4.view.ViewPager;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -54,6 +49,10 @@ public class ChatActivity extends FragmentActivity implements
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_chat);
 
+		// This is our main activity. Start the chat service here if it wasn't
+		// started on reboot.
+		startService(new Intent(this, ChatService.class));
+		
 		// Set up the action bar.
 		final ActionBar actionBar = getActionBar();
 		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
@@ -131,22 +130,6 @@ public class ChatActivity extends FragmentActivity implements
 	}
 	
 	
-	@Override
-	protected void onActivityResult (int requestCode, int resultCode, Intent data) {
-		switch(requestCode) {
-		case NEW_CHAT_SERVER:
-			if (resultCode == RESULT_OK) {
-				ChatServerUtils.getInstance(this).setRefreshServerList(
-						data.getBooleanExtra(ChatServerUtils.CHAT_SERVER_ADDED, false));
-			}
-			break;
-		}
-	}
-	
-	
-	
-	
-	
 	/**
 	 * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
 	 * one of the sections/tabs/pages.
@@ -166,7 +149,10 @@ public class ChatActivity extends FragmentActivity implements
 			// TODO: Changes from the automated code begin here.
 			// For section 2, create a ChatServerList fragment
 			if (position == 1) { // O-based
-				return new ChatServerListFragment();
+				return new MonitoredSitesListFragment();
+			}
+			else if (position == 0) {
+				return new VisitorListFragment();
 			}
 			
 			Fragment fragment = new DummySectionFragment();

@@ -1,12 +1,11 @@
 package com.scalior.mibewmob.activities;
 
-import org.json.JSONObject;
-
 import com.scalior.mibewmob.R;
 import com.scalior.mibewmob.fragments.ServerDetailsFragment;
 import com.scalior.mibewmob.fragments.ServerDetailsFragment.OnConfirmListener;
-import com.scalior.mibewmob.fragments.ValidateServerFragment;
-import com.scalior.mibewmob.fragments.ValidateServerFragment.OnValidateListener;
+import com.scalior.mibewmob.fragments.AddServerFragment;
+import com.scalior.mibewmob.fragments.AddServerFragment.OnAddServerListener;
+import com.scalior.mibewmob.model.MonitoredSite;
 
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -17,7 +16,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 public class ServerDetailsActivity extends FragmentActivity
-									implements OnValidateListener,
+									implements OnAddServerListener,
 											   OnConfirmListener {
 
 	@Override
@@ -31,7 +30,7 @@ public class ServerDetailsActivity extends FragmentActivity
 		// Activate the fragment to collect the new server details
 		FragmentManager fragmentManager = getSupportFragmentManager();
 		FragmentTransaction ft = fragmentManager.beginTransaction();
-		ft.add(R.id.server_activity_fragment, new ValidateServerFragment());
+		ft.add(R.id.server_activity_fragment, new AddServerFragment());
 		ft.commit();
 	}
 
@@ -61,19 +60,16 @@ public class ServerDetailsActivity extends FragmentActivity
 	}
 
 	@Override
-	public void onValidate(JSONObject[] p_serverDetails) {
+	public void onAddServer(MonitoredSite p_addedSite) {
 		// If valid server data was collected, proceed to the 
 		// server details fragment to confirm
-		if (p_serverDetails != null &&
-			p_serverDetails[0] != null &&
-			p_serverDetails[1] != null) {
+		if (p_addedSite != null) {
 			
 			FragmentManager fragmentManager = getSupportFragmentManager();
 			FragmentTransaction ft = fragmentManager.beginTransaction();
 			ServerDetailsFragment serverDetailsFragment = new ServerDetailsFragment();
 			Bundle bundle = new Bundle();
-			bundle.putString("serverDetails", p_serverDetails[0].toString());
-			bundle.putString("operatorDetails", p_serverDetails[1].toString());
+			bundle.putLong("serverID", p_addedSite.getServer().getID());
 			serverDetailsFragment.setArguments(bundle);
 			
 			ft.replace(R.id.server_activity_fragment, serverDetailsFragment);

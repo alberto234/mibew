@@ -10,6 +10,7 @@ public class ChatServer {
 	private String m_logoURL;
 	private String m_mibewMobVersion;
 	private String m_webServiceURL;
+	private long m_ID;
 	
 	public ChatServer (String p_name, String p_URL, String p_version,
 					   String p_logoURL, String p_mibewMobVersion,
@@ -22,13 +23,18 @@ public class ChatServer {
 		m_webServiceURL = p_webServiceURL;
 	}
 	
-	public ChatServer (JSONObject p_serverDetails) throws JSONException {
-		m_name = p_serverDetails.getString("name");
-		m_URL = p_serverDetails.getString("chatURL");
-		m_version = p_serverDetails.getString("version");
-		m_logoURL = p_serverDetails.getString("logoURL");
-		m_mibewMobVersion = p_serverDetails.getString("mibewMobVersion");
-		m_webServiceURL = p_serverDetails.getString("webServiceURL");
+	public ChatServer (JSONObject p_serverDetails) {
+		try {
+			m_name = p_serverDetails.optString("name");
+			m_URL = p_serverDetails.getString("chatURL");
+			m_version = p_serverDetails.getString("version");
+			m_logoURL = p_serverDetails.optString("logoURL");
+			m_mibewMobVersion = p_serverDetails.getString("mibewMobVersion");
+			m_webServiceURL = p_serverDetails.getString("webServiceURL");
+		} catch (JSONException e) {
+			throw new RuntimeException("Failed to parse the JSON server details: " +
+							e.getMessage(), e);
+		}
 	}
 	// Getters and Setters
 	public String getName() {
@@ -72,6 +78,15 @@ public class ChatServer {
 
 	public void setWebServiceURL(String webServiceURL) {
 		m_webServiceURL = webServiceURL;
+	}
+
+	public long getID() {
+		// TODO Auto-generated method stub
+		return m_ID;
+	}
+
+	public void setID(long iD) {
+		m_ID = iD;
 	}
 
 }

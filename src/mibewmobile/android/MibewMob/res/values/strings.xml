@@ -26,5 +26,15 @@
     <string name="login">Log In</string>
     <string name="server_info">Server Info</string>
     <string name="operator_info">Operator Info</string>
-    
+    <string name="chat_service_label">Mibew Mobile Chat Service</string>
+    <string name="chat_service_started">Chat service started</string>
+    <string name="chat_service_stopped">Chat service stopped</string>
+    <string name="guest_name">Guest Name</string>
+    <string name="intitial_message">Initial inquiry from guest</string>
+    <string name="no_visitors">There are currently no visitors on the sites being monitored</string>
+    <string name="title_activity_chatting">Chatting</string>
+    <string name="hello_bubbles">Hello bubbles!</string>
+    <string name="action_initiate_chat">Start Chat</string>
+    <string name="sendnow">Send Now</string>
+
 </resources>
