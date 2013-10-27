@@ -10,6 +10,14 @@ require_once('../libs/groups.php');
 	0 = success
 	1 = login failed
 	2 = invalid operator token
+	3 = invalid thread
+	4 = cannot take over
+	5 = confirm take over
+	6 = cannot view thread
+	7 = wrong thread
+	8 = invalid chat token
+	9 = invalid command
+   10 = unknown error
 */
 
 
@@ -122,6 +130,8 @@ function get_active_visitors($oprtoken) {
 	
 	if ($operatorId != NULL) {
 		$out = get_pending_threads();
+		$out['errorCode'] = 0;
+		$out['errorMsg'] = 'success';
 	}
 	else {
 		$out = array('errorCode' => 2,
@@ -174,11 +184,15 @@ function get_pending_threads()
 			 "ORDER BY threadid";
 	$rows = select_multi_assoc($query, $link);
 	
-	foreach ($rows as $row) {
-		$thread = thread_to_array($row, $link);
-		$output[] = $thread;
+	$output['threadCount'] = count($rows);
+	if (count($rows) > 0) {
+		$threadList = array();
+		foreach ($rows as $row) {
+			$thread = thread_to_array($row, $link);
+			$threadList[] = $thread;
+		}
+		$output['threadList'] = $threadList;
 	}
-
 	mysql_close($link);
 
 	//foreach ($output as $thr) {
@@ -194,12 +208,13 @@ function thread_to_array($thread, $link)
 $webim_encoding, $operator, $settings,
 $can_viewthreads, $can_takeover, $mysqlprefix;
 	$state = $threadstate_to_string[$thread['istate']];
+
 	
 	$result = array();
 	$result['threadid'] = $thread['threadid'];
 	
 	if ($state == "closed") {
-		$result['state'] = $state;
+		$result['state'] = $thread['istate'];
 		return $result;
 	}
 
@@ -229,7 +244,7 @@ $can_viewthreads, $can_takeover, $mysqlprefix;
 		$result['banid'] = $banForThread['banid'];
 	}
 
-	$result['state'] = $state;
+	$result['state'] = $thread['istate'];
 	$result['typing'] = $thread['userTyping'];
 	
 	if ($banForThread) {
@@ -308,6 +323,8 @@ function start_chat($oprtoken, $threadid) {
 			
 			if ($forcetake == false) {
 				// Todo. Confirm that you want to force the takeover of the conversation
+				// 1 month later and I'm not sure what this should do. This is a potential
+				// bug that needs to be reviewed.
 				return array('errorCode' => 5,
 							 'errorMsg' => 'confirm take over');
 			}
@@ -384,7 +401,8 @@ function get_new_messages($oprtoken, $threadid, $chattoken) {
 function get_unsynced_messages($threadid) {
 	$link = connect();
 
-	$query = "select messageid, tmessage, dtmcreated from ${mysqlprefix}chatmessage 
+	$query = "select messageid, tmessage, dtmcreated, threadid, agentId, tname, ikind 
+			  from ${mysqlprefix}chatmessage 
 			  where threadid = $threadid";
 	
 	$rows = select_multi_assoc($query, $link);
@@ -398,7 +416,7 @@ function get_unsynced_messages($threadid) {
 
 	// Make sure there is at least one result
 	if (count($rows) > 0) {
-		$out['messages'] = $rows;
+		$out['messageList'] = $rows;
 	}
 	
 	return $out;
@@ -444,4 +462,17 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsg) {
 			     'errorMsg' => 'success');
 }
 
+/***********
+ * Method:	
+ *		invalid_command
+ * Description:
+ *	  	Returns an invalid command error message
+ * Author:
+ * 		ENsoesie 	10/19/2013	Creation
+ ***********/
+ function invalid_command() {
+	 return array('errorCode' => 9,
+	 			  'errorMsg' => 'Invalid command');
+ }
+	 
 ?>

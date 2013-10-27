@@ -57,7 +57,6 @@ else if($_GET['cmd'] == 'login') {
 }
 else if ($_GET['cmd'] == 'visitorlist') {
 	$oprtoken = $_GET['oprtoken'];
-	
 	$out = get_active_visitors($oprtoken);
 
 	$jsonOut = json_encode($out);
@@ -87,6 +86,12 @@ else if ($_GET['cmd'] == 'postmessage') {
 	$chattoken = $_GET['token'];
 	
 	$out = msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsg);
+	$jsonOut = json_encode($out);
+	echo $jsonOut;
+}
+else
+{
+	$out = invalid_command();
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }
