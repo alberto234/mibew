@@ -3,6 +3,7 @@ package com.scalior.mibewmob.model;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+
 public class ChatThread {
 	// Chat state constants (from server. We have to make sure they always match)
 	public static final int STATE_QUEUE			= 0;
@@ -21,11 +22,13 @@ public class ChatThread {
 	private boolean m_typing;
 	private String m_guestName;
 	private String m_agentName;
+	private int m_agentID;
 	private String m_userAgent;
 	private String m_initialMessage;
 	private long m_ID;
 	private int m_token;
 	private boolean m_viewed;
+	private boolean m_chattingWithGuest;
 	
 	// These are helper data members, not necessarily saved in the database
 	private String m_serverLogoURL;
@@ -34,7 +37,7 @@ public class ChatThread {
 	public ChatThread(int p_serverID, int p_threadID, int p_state,
 						boolean p_canOpen, boolean p_canView, boolean p_canBan,
 						boolean p_typing, String p_guestName, String p_agentName,
-						String p_userAgent, String p_initialMessage) {
+						int p_agentID, String p_userAgent, String p_initialMessage) {
 		m_serverID = p_serverID;
 		m_threadID = p_threadID;
 		m_state = p_state;
@@ -44,11 +47,13 @@ public class ChatThread {
 		m_typing = p_typing;
 		m_guestName = p_guestName;
 		m_agentName = p_agentName;
+		m_agentID = p_agentID;
 		m_userAgent = p_userAgent;
 		m_initialMessage = p_initialMessage;
 		m_ID = 0;
 		m_token = 0;
 		m_viewed = false;
+		m_chattingWithGuest = false;
 	}
 	
 	public ChatThread(JSONObject p_jThread, long p_serverID) {
@@ -59,6 +64,7 @@ public class ChatThread {
 			m_typing = p_jThread.getInt("typing") != 0;
 			m_guestName = p_jThread.getString("name");
 			m_agentName = p_jThread.getString("agent");
+			m_agentID = p_jThread.getInt("agentid");
 			m_userAgent = p_jThread.getString("useragent");
 			m_initialMessage = p_jThread.optString("message");
 			m_canOpen = p_jThread.optString("canopen") == "true";
@@ -67,12 +73,14 @@ public class ChatThread {
 			m_ID = 0;
 			m_token = 0;
 			m_viewed = false;
+			m_chattingWithGuest = false;
 		} catch (JSONException e) {
 			throw new RuntimeException("Failed to parse the JSON thread details: " +
 							e.getMessage(), e);
 		}
 	}
 
+	
 	// Getters and Setters
 	public long getServerID() {
 		return m_serverID;
@@ -153,8 +161,8 @@ public class ChatThread {
 		return m_ID;
 	}
 
-	public void setID(int iD) {
-		m_ID = iD;
+	public void setID(long p_ID) {
+		m_ID = p_ID;
 	}
 
 	public int getToken() {
@@ -171,6 +179,22 @@ public class ChatThread {
 
 	public void setViewed(boolean viewed) {
 		m_viewed = viewed;
+	}
+
+	public boolean isChattingWithGuest() {
+		return m_chattingWithGuest;
+	}
+
+	public void setChattingWithGuest(boolean chattingWithGuest) {
+		m_chattingWithGuest = chattingWithGuest;
+	}
+
+	public int getAgentID() {
+		return m_agentID;
+	}
+
+	public void setAgentID(int agentID) {
+		m_agentID = agentID;
 	}
 	
 }

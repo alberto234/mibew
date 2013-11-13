@@ -49,14 +49,15 @@
         </activity>
 
         <service
-            android:name="com.scalior.mibewmob.services.ChatService"
+            android:name="com.scalior.mibewmob.services.PollingService"
             android:icon="@drawable/ic_launcher"
             android:label="@string/chat_service_label" >
         </service>
 
         <activity
             android:name="com.scalior.mibewmob.activities.ChattingActivity"
-            android:label="@string/title_activity_chatting" >
+            android:label="@string/title_activity_chatting"
+            android:windowSoftInputMode="stateHidden|adjustResize" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.scalior.mibewmob.activities.ChatActivity" />

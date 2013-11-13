@@ -13,23 +13,28 @@ public class ChatOperator {
 	private String m_email;
 	private int m_permissions;
 	private long m_serverID;
+	private int m_operatorID_R;
 	
 	// Constructors
-	public ChatOperator(String p_token, String p_username, String p_localeName, String p_commonName,
+	public ChatOperator(String p_token, int p_operatorID_R, String p_username, String p_localeName, String p_commonName,
 						String p_email, int p_permissions) {
 
 		m_token = p_token;
+		m_operatorID_R = p_operatorID_R;
 		m_username = p_username;
 		m_localeName = p_localeName;
 		m_commonName = p_commonName;
 		m_email = p_email;
 		m_permissions = p_permissions;
+		m_serverID = 0;
+		
 	}
 
 	
 	public ChatOperator(JSONObject p_jOperator) {
 		try {
 			m_token = p_jOperator.getString("oprtoken");
+			m_operatorID_R = p_jOperator.getInt("operatorid");
 			m_username = p_jOperator.getString("username");
 			m_localeName = p_jOperator.getString("localename");
 			m_commonName = p_jOperator.getString("commonname");
@@ -92,5 +97,15 @@ public class ChatOperator {
 
 	public void setServerID(long serverID) {
 		m_serverID = serverID;
+	}
+
+
+	public int getOperatorID_R() {
+		return m_operatorID_R;
+	}
+
+
+	public void setOperatorID_R(int operatorID_R) {
+		m_operatorID_R = operatorID_R;
 	}
 }

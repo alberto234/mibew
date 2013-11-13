@@ -165,10 +165,14 @@ public class WebServiceBridge {
 	 * 
 	 * @author ENsoesie  10/19/2013
 	 */
-	public static JSONObject getActiveVisitors(String p_serverURL, String p_oprtoken) {
+	public static JSONObject getActiveVisitors(String p_serverURL, String p_oprtoken, String activeVisitors) {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "visitorlist"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
+		
+		if (!activeVisitors.isEmpty()) {
+			queryList.add(new BasicNameValuePair("activevisitors", activeVisitors));
+		}
 
 		return runQuery(p_serverURL, queryList);
 	}
@@ -231,13 +235,33 @@ public class WebServiceBridge {
 	 * @author ENsoesie  10/24/2013
 	 */
 	public static JSONObject sendMessage(String p_serverURL, String p_oprtoken, int p_threadid,
-			int p_chattoken, String p_message) {
+			int p_chattoken, int p_messageid, String p_message) {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "postmessage"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
 		queryList.add(new BasicNameValuePair("threadid", Integer.toString(p_threadid)));
 		queryList.add(new BasicNameValuePair("token", Integer.toString(p_chattoken)));
+		queryList.add(new BasicNameValuePair("messageidl", Integer.toString(p_messageid)));
 		queryList.add(new BasicNameValuePair("message", p_message));
+
+		return runQuery(p_serverURL, queryList);
+	}
+
+
+	/**
+	 * @param p_serverURL: The server URL
+	 * @param p_oprtoken: The operator token
+	 * @param p_messageIDs: The comma-separated list of message ids
+	 * @return JSONObject: A JSON object that holds the returned results 
+	 * 
+	 * @author ENsoesie  11/6/2013
+	 */
+	public static JSONObject acknowledgeMessages(String p_serverURL, String p_oprtoken,
+			String p_messageIDs) {
+		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
+		queryList.add(new BasicNameValuePair("cmd", "ack-messages"));
+		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
+		queryList.add(new BasicNameValuePair("messageids", p_messageIDs));
 
 		return runQuery(p_serverURL, queryList);
 	}

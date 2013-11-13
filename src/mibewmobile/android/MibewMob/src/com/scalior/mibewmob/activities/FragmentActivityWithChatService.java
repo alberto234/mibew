@@ -1,7 +1,7 @@
 package com.scalior.mibewmob.activities;
 
-import com.scalior.mibewmob.services.ChatService;
-import com.scalior.mibewmob.services.ChatService.ChatServiceBinder;
+import com.scalior.mibewmob.services.PollingService;
+import com.scalior.mibewmob.services.PollingService.PollingServiceBinder;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -20,11 +20,11 @@ import android.widget.Toast;
  *
  */
 public class FragmentActivityWithChatService extends FragmentActivity {
-	protected ChatServiceBinder m_chatServiceBinder; 
+	protected PollingServiceBinder m_chatServiceBinder; 
 	private boolean m_isBound;
 	private ServiceConnection m_connection = new ServiceConnection() {
 		public void onServiceConnected(ComponentName className, IBinder service) {
-			m_chatServiceBinder = (ChatServiceBinder)service;
+			m_chatServiceBinder = (PollingServiceBinder)service;
 			Toast.makeText(FragmentActivityWithChatService.this, "Service connected", Toast.LENGTH_SHORT).show();
 		}
 		
@@ -36,7 +36,7 @@ public class FragmentActivityWithChatService extends FragmentActivity {
 	
 	private void doBindService() {
 		getApplicationContext().bindService(
-				new Intent(getApplicationContext(), ChatService.class),
+				new Intent(getApplicationContext(), PollingService.class),
 				m_connection, Context.BIND_AUTO_CREATE);
 		Toast.makeText(FragmentActivityWithChatService.this, "Service bound", Toast.LENGTH_SHORT).show();
 

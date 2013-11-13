@@ -125,11 +125,11 @@ function create_operator_session($op) {
  * Author:
  * 		ENsoesie 	9/4/2013	Creation
  ***********/
-function get_active_visitors($oprtoken) {
+function get_active_visitors($oprtoken, $deviceVisitors) {
 	$operatorId = operator_from_token($oprtoken);
 	
 	if ($operatorId != NULL) {
-		$out = get_pending_threads();
+		$out = get_pending_threads($deviceVisitors);
 		$out['errorCode'] = 0;
 		$out['errorMsg'] = 'success';
 	}
@@ -172,7 +172,7 @@ function operator_from_token($oprtoken) {
  * Author:
  * 		ENsoesie 	9/4/2013	Creation
  ***********/
-function get_pending_threads()
+function get_pending_threads($deviceVisitors)
 {
 	global $webim_encoding, $settings, $state_closed, $state_left, $mysqlprefix;
 	$link = connect();
@@ -181,17 +181,26 @@ function get_pending_threads()
 	$query = "select threadid, userName, agentName, unix_timestamp(dtmcreated), userTyping, " .
 			 "unix_timestamp(dtmmodified), lrevision, istate, remote, nextagent, agentId, userid, shownmessageid, userAgent, (select vclocalname from ${mysqlprefix}chatgroup where ${mysqlprefix}chatgroup.groupid = ${mysqlprefix}chatthread.groupid) as groupname " .
 			 "from ${mysqlprefix}chatthread where istate <> $state_closed AND istate <> $state_left " . 
-			 "ORDER BY threadid";
+			 "ORDER BY threadid DESC";
 	$rows = select_multi_assoc($query, $link);
 	
-	$output['threadCount'] = count($rows);
+	
+	$deviceVisitorArray = explode(",", $deviceVisitors);
+	
 	if (count($rows) > 0) {
 		$threadList = array();
 		foreach ($rows as $row) {
-			$thread = thread_to_array($row, $link);
-			$threadList[] = $thread;
+			
+			// If this visitor has already been sent to the client, 
+			// do not send it again
+			if (array_search($row['threadid'], $deviceVisitorArray) === false) {
+				$thread = thread_to_array($row, $link);
+				$threadList[] = $thread;
+			}
 		}
-		$output['threadList'] = $threadList;
+		if (($output['threadCount'] = count($threadList)) > 0) {
+			$output['threadList'] = $threadList;
+		}
 	}
 	mysql_close($link);
 
@@ -256,6 +265,7 @@ $can_viewthreads, $can_takeover, $mysqlprefix;
 	
 //	$result['addr'] = htmlspecialchars(get_user_addr($thread['remote']));
 	$result['agent'] = htmlspecialchars(htmlspecialchars($threadoperator));
+	$result['agentid'] = $thread['agentId'];
 	$result['time'] = $thread['unix_timestamp(dtmcreated)'] . "000";
 	$result['modified'] = $thread['unix_timestamp(dtmmodified)'] . "000";
 
@@ -401,9 +411,16 @@ function get_new_messages($oprtoken, $threadid, $chattoken) {
 function get_unsynced_messages($threadid) {
 	$link = connect();
 
-	$query = "select messageid, tmessage, dtmcreated, threadid, agentId, tname, ikind 
-			  from ${mysqlprefix}chatmessage 
-			  where threadid = $threadid";
+	$deviceid = 1; 	// We are currently hardcoding the test device
+	
+	$query = "select messageid, tmessage, unix_timestamp(dtmcreated) as timestamp, threadid, 
+			  agentId, tname, ikind 
+			  from ${mysqlprefix}chatmessage as cm
+			  where threadid = $threadid
+			  and not exists (
+			  	select 1 from ${mysqlprefix}chatsyncedmessages as csm
+				where csm.messageid = cm.messageid
+				and csm.deviceid = $deviceid)";
 	
 	$rows = select_multi_assoc($query, $link);
 
@@ -418,7 +435,7 @@ function get_unsynced_messages($threadid) {
 	if (count($rows) > 0) {
 		$out['messageList'] = $rows;
 	}
-	
+
 	return $out;
 }
 
@@ -431,7 +448,7 @@ function get_unsynced_messages($threadid) {
  * Author:
  * 		ENsoesie 	9/7/2013	Creation
  ***********/
-function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsg) {
+function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg) {
 	$operatorId = operator_from_token($oprtoken);
 	if ($operatorId == NULL) {
 		return array('errorCode' => 2,
@@ -450,18 +467,106 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsg) {
 					 'errorMsg' => 'invalid chat token');
 	}
 
+	// Steps needed to post a message
+	// 1 - Check if it is in the devicemessages table
+	// 2 - If so, send back the devicemessageid, messageid, timestamp, then done
+	// 3 - If not post the message and get the messageid and timestamp
+	// 4 - Add the message metadata to the devicemessages table
+	// 5 - Send back the devicemessageid, messageid, timestamp, then done
 
+
+	// 1 - Check if it is in the devicemessages table
+	// Todo: Get deviceid from token
+	$deviceid = 1;
+	$link = connect();
+	$result = select_one_row("select messageid, unix_timestamp(msgtimestamp)
+							 from ${mysqlprefix}chatmessagesfromdevice
+							 where deviceid = $deviceid and devicemessageid = $opMsgIdL", $link);
+	
+	// 2 - If so, send back the devicemessageid, messageid, timestamp, then done
+	if ($result != NULL) {
+		return array('errorCode' => 0,
+					 'errorMsg' => 'success',
+					 'messageidr' => $result['messageid'],
+					 'messageidl' => $opMsgIdL,
+					 'timestamp' => $result['unix_timestamp(msgtimestamp)']);
+	}
+	
+	// 3 - If not post the message and get the messageid and timestamp
 	global $kind_agent;
 	$from = $thread['agentName'];
 
-	$link = connect();
 	$postedid = post_message_($threadid, $kind_agent, $opMsg, $link, $from, null, $operatorId);
+	
+	// Get the timestamp when the message was posted.
+	$result = select_one_row("select dtmcreated, unix_timestamp(dtmcreated) from ${mysqlprefix}chatmessage
+								 where messageid = ". $postedid, $link);
+	
+	// 4 - Add the message metadata to the devicemessages table
+	$query = "INSERT INTO ${mysqlprefix}chatmessagesfromdevice 
+			  (deviceid, messageid, devicemessageid, msgtimestamp) VALUES 
+			  ($deviceid, $postedid, $opMsgIdL, '" . $result['dtmcreated']. "')";
+
+	perform_query($query, $link);
+	
+	// Also add this message to the sync'ed messages table.
+	// Although this is like a "reverse sync", we are doing this so that we 
+	// don't have to search both the sync'ed messages and the device messages tables
+	// when searching for unsync'ed messages. 
+	// This als allows for a shorter purge period for the device messages table, while
+	// the purge period on the sync'ed messages table can be long.
+	ack_messages($oprtoken, "$postedid");
+	
 	mysql_close($link);
 	
 	return array('errorCode' => 0,
-			     'errorMsg' => 'success');
+			     'errorMsg' => 'success',
+				 'messageidr' => $postedid,
+				 'messageidl' => $opMsgIdL,
+				 'timestamp' => $result['unix_timestamp(dtmcreated)']);
 }
 
+/***********
+ * Method:	
+ *		ack_messages
+ * Description:
+ *	  	Acknowledgmenet for messages that have been received
+ *		by client
+ * Author:
+ * 		ENsoesie 	11/6/2013	Creation
+ ***********/
+function ack_messages($oprtoken, $msgList) {
+	// Todo: We will get device id from oprtoken
+	$deviceid = 1;
+
+	$msgListArray = explode(",", $msgList);
+	
+	// Create $data of the form "(messageid, deviceid), (messageid, deviceid),..."
+	$firstDataElement = true;
+	foreach($msgListArray as $msgID) {
+		if (!$firstDataElement) {
+			$data.= ", ";
+		}
+		else {
+			$firstDataElement = false;
+		}
+		
+		$data.= "(" . $msgID. ", ". $deviceid .")";
+	}
+
+	// Create the query
+	$query = "INSERT INTO ${mysqlprefix}chatsyncedmessages (messageid, deviceid) VALUES ";
+	$query.= $data;
+	
+	$link = connect();
+	perform_query($query, $link);
+
+
+	return array('errorCode' => 0,
+	 			  'errorMsg' => 'success');
+}
+	
+	
 /***********
  * Method:	
  *		invalid_command
@@ -475,4 +580,22 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsg) {
 	 			  'errorMsg' => 'Invalid command');
  }
 	 
+/***********
+ * Method:	
+ *		batch_op_messages
+ * Description:
+ *	  	Post a batch of messages from the mobile operator
+ * Author:
+ * 		ENsoesie 	11/7/2013	Creation
+ ***********
+function batch_op_messages($oprtoken, $oprtoken, $opMessages) {
+	$operatorId = operator_from_token($oprtoken);
+	if ($operatorId == NULL) {
+		return array('errorCode' => 2,
+					 'errorMsg' => 'invalid operator token');
+	}
+
+	$operator = operator_by_id($operatorId);
+	
+	*/
 ?>

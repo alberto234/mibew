@@ -57,7 +57,9 @@ else if($_GET['cmd'] == 'login') {
 }
 else if ($_GET['cmd'] == 'visitorlist') {
 	$oprtoken = $_GET['oprtoken'];
-	$out = get_active_visitors($oprtoken);
+	$deviceVisitors = $_GET['activevisitors'];
+	
+	$out = get_active_visitors($oprtoken, $deviceVisitors);
 
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
@@ -79,16 +81,33 @@ else if ($_GET['cmd'] == 'newmessages') {
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }
-else if ($_GET['cmd'] == 'postmessage') {
+else if ($_GET['cmd'] == 'ack-messages') {
 	$oprtoken = $_GET['oprtoken'];
-	$opMsg = $_GET['message'];
-	$threadid = $_GET['threadid'];
-	$chattoken = $_GET['token'];
+	$msgList = $_GET['messageids'];
 	
-	$out = msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsg);
+	$out = ack_messages($oprtoken, $msgList);
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }
+else if ($_GET['cmd'] == 'postmessage') {
+	$oprtoken = $_GET['oprtoken'];
+	$threadid = $_GET['threadid'];
+	$chattoken = $_GET['token'];
+	$opMsgIdL = $_GET['messageidl'];
+	$opMsg = $_GET['message'];
+	
+	$out = msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg);
+	$jsonOut = json_encode($out);
+	echo $jsonOut;
+}
+/*else if ($_GET['cmd'] == 'postmessages') {
+	$oprtoken = $_GET['oprtoken'];
+	$opMessages = $_GET['messages'];
+	
+	$out = batch_op_messages($oprtoken, json_decode($opMessages, true));
+	$jsonOut = json_encode($out);
+	echo $jsonOut;
+}*/
 else
 {
 	$out = invalid_command();

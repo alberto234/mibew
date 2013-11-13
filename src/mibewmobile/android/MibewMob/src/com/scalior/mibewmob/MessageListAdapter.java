@@ -66,7 +66,8 @@ public class MessageListAdapter extends ArrayAdapter<ChatMessage> {
         ChatMessage messageItem = items.get(position);
         
         if (messageItem != null) {
-            viewHolder.tvMessage.setText(messageItem.getMessage());
+            viewHolder.tvMessage.setText("("+ messageItem.getOperatorGuid() + ": " +
+            							 messageItem.getThreadID() + ") " + messageItem.getMessage());
             if (messageItem.getOperatorGuid() != 0) {
             	// This is a message from an operator
             	// TODO: We have to use a separate color for the current
@@ -76,6 +77,13 @@ public class MessageListAdapter extends ArrayAdapter<ChatMessage> {
                         LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
             	
             	params.gravity = Gravity.RIGHT;
+            	viewHolder.tvMessage.setLayoutParams(params);
+            } else {
+            	viewHolder.tvMessage.setBackgroundResource(R.drawable.bubble_yellow);
+            	LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+            	
+            	params.gravity = Gravity.LEFT;
             	viewHolder.tvMessage.setLayoutParams(params);
             }
         }

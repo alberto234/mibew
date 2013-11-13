@@ -1,5 +1,6 @@
 package com.scalior.mibewmob;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,7 +62,8 @@ public class ChatUtils {
 	private List<MonitoredSite> m_monitoredSitesList;
 	private SparseArray<MonitoredSite> m_monitoredSitesMap;
 	private List<ChatThread> m_visitorList;
-	private SparseArray<ChatThread> m_visitorMap;
+//	private SparseArray<ChatThread> m_visitorMap;
+	private ChatThread m_threadToExpand;
 
 	// Note. The chat utility should be created with the application context.
 	// That said, no UI updates should be done using this context.
@@ -73,7 +75,7 @@ public class ChatUtils {
 		m_context = p_context;
 		m_bRefreshServerList = false;
 		m_monitoredSitesList = null;
-		m_visitorList = loadArchivedVisitorList();
+		m_visitorList = reloadArchivedVisitorList();
 	};
 
 	public static ChatUtils getInstance(Context p_context) {
@@ -214,24 +216,26 @@ public class ChatUtils {
 		return m_monitoredSitesList.get(index);
 	}
 	
-	public List<ChatThread> loadArchivedVisitorList() {
+	public List<ChatThread> reloadArchivedVisitorList() {
 		if (m_visitorList == null) {
 			m_visitorList = new ArrayList<ChatThread>();
-
-			MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
-			dbHelper.loadArchivedVisitors(m_visitorList);
-			
-			// Refresh the visitor map.
-			if (m_visitorMap == null) {
-				m_visitorMap = new SparseArray<ChatThread>();
-			}
-			m_visitorMap.clear();
-			
-			for (int i = 0; i < m_visitorList.size(); i++) {
-				m_visitorMap.put(m_visitorList.get(i).getThreadID(),
-								m_visitorList.get(i));
-			}
 		}
+		
+		m_visitorList.clear();
+
+		MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
+		dbHelper.loadArchivedVisitors(m_visitorList);
+		
+		// Refresh the visitor map.
+//		if (m_visitorMap == null) {
+//			m_visitorMap = new SparseArray<ChatThread>();
+//		}
+//		m_visitorMap.clear();
+		
+//		for (int i = 0; i < m_visitorList.size(); i++) {
+	//		m_visitorMap.put(m_visitorList.get(i).getThreadID(),
+		//					m_visitorList.get(i));
+//		}
 
 		return m_visitorList;
 	}
@@ -240,15 +244,15 @@ public class ChatUtils {
 		return m_visitorList;
 	}
 	
-	public SparseArray<ChatThread> getVisitorMap() {
-		return m_visitorMap;
-	}
+//	public SparseArray<ChatThread> getVisitorMap() {
+//		return m_visitorMap;
+//	}
 
 	/**
 	 * Description:
 	 * 	Get the list of active conversations for the given server
 	 * 
-	 * @param p_server
+	 * @param p_monitoredSite
 	 * @param p_oprtoken
 	 * 
 	 * @return List<ChatThread>: list of active visitors
@@ -257,25 +261,45 @@ public class ChatUtils {
 	 * 
 	 * @author ENsoesie  10/19/2013
 	 */
-	public List<ChatThread> getActiveVisitors(ChatServer p_server, String p_oprtoken) 
+	public List<ChatThread> getActiveVisitors(MonitoredSite p_monitoredSite, String p_oprtoken) 
 			throws MibewMobException {
-		List<ChatThread> visitorList = null;
+		List<ChatThread> visitorList = new ArrayList<ChatThread>();
 		
+		// Get a comma-separated list of current active visitors
+		StringBuilder sbActiveVisitorList = new StringBuilder();
+		boolean bFirst = true;
+		for(ChatThread visitor: m_visitorList) {
+			if (visitor.getServerID() == p_monitoredSite.getServer().getID()) {
+				if (!bFirst) {
+					sbActiveVisitorList.append(",");
+				} else {
+					bFirst = false;
+				}
+				sbActiveVisitorList.append(visitor.getThreadID());
+			}
+		}
+
 		JSONObject jActiveVisitors = 
-				WebServiceBridge.getActiveVisitors(p_server.getWebServiceURL(), p_oprtoken);
+				WebServiceBridge.getActiveVisitors(p_monitoredSite.getServer().getWebServiceURL(), 
+						p_oprtoken, sbActiveVisitorList.toString());
 		try {
 			int errorCode = jActiveVisitors.getInt("errorCode");
 
-			if (errorCode == SERVER_ERROR_SUCCESS &&
-					jActiveVisitors.getInt("threadCount") > 0) {
-				visitorList = new ArrayList<ChatThread>();
-				
-				JSONArray jThreadList = jActiveVisitors.getJSONArray("threadList");
-				for (int j = 0; j < jThreadList.length(); j++) {
-					visitorList.add(new ChatThread(jThreadList.getJSONObject(j),
-							p_server.getID()));
-				}
-				
+			if (errorCode == SERVER_ERROR_SUCCESS) {
+				if (jActiveVisitors.getInt("threadCount") > 0) {
+
+					JSONArray jThreadList = jActiveVisitors.getJSONArray("threadList");
+					for (int j = 0; j < jThreadList.length(); j++) {
+						ChatThread visitor = new ChatThread(jThreadList.getJSONObject(j), p_monitoredSite.getServer().getID());
+						
+						// Determine if this is a thread that the user is actively chatting with
+						if (visitor.getAgentID() == p_monitoredSite.getOperator().getOperatorID_R() &&
+							visitor.getState() == ChatThread.STATE_CHATTING) {
+							visitor.setChattingWithGuest(true);
+						}
+						visitorList.add(visitor);
+					}
+				}				
 				return visitorList;
 			}
 			else {
@@ -284,10 +308,88 @@ public class ChatUtils {
 			}
 		} catch (JSONException e) {
 			throw new RuntimeException("Failed to parse JSON when getting active visitors for server " + 
-							p_server.getURL() + ": " + e.getMessage(), e);
+							p_monitoredSite.getServer().getURL() + ": " + e.getMessage(), e);
 		}
 	}
 
+
+	/**
+	 * Description:
+	 * 	Checks the monitored servers if there are any new visitors
+	 * 
+	 * @param p_bSaveToDb: Determine if after the check we should save the new visitors to the database
+	 *
+	 * @return List<ChatThread>: list of new visitors
+	 * 
+	 * @throws	MibewMobException:
+	 * 
+	 * @author ENsoesie  10/19/2013
+	 */
+	public synchronized List<ChatThread> checkForNewVisitors(boolean p_bSaveToDb) throws MibewMobException {
+		List<ChatThread> visitors = new ArrayList<ChatThread>(); 
+		if (m_monitoredSitesList == null) {
+			return visitors;
+		}
+		
+		for (int i = 0; i < m_monitoredSitesList.size(); i++) {
+			visitors.addAll(getActiveVisitors(m_monitoredSitesList.get(i),
+					m_monitoredSitesList.get(i).getOperator().getToken()));
+		}
+		
+		if (visitors.size() > 0 && p_bSaveToDb) {
+			saveNewisitors(visitors);
+		}
+		
+		return visitors;
+	}
+	
+	
+	/**
+	 * Description:
+	 * 	Saves the list of new visitors to the database.
+	 * 
+	 * @param p_updatedList: The list of new visitors
+	 *
+	 * @return List<ChatThread>: the merged list, containing the new visitors
+	 * 
+	 * @author ENsoesie  10/19/2013
+	 */
+	public List<ChatThread> saveNewisitors(List<ChatThread> p_updatedList) {
+		// This method updates the internal m_visitorList as well as returns it.
+
+		int visitorListIdx = 0;
+		int updatedListIdx = 0;
+		MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
+
+		List<ChatThread> tempVisitorList = new ArrayList<ChatThread>();
+		
+		// Loop through all the elements in both lists and create the temp list
+		for (int i = 0; i < m_visitorList.size() + p_updatedList.size(); i++) {
+			if (updatedListIdx >= p_updatedList.size() &&
+					visitorListIdx < m_visitorList.size()) {
+				
+				// Here we are done processing the list from the server(s)
+				tempVisitorList.add(m_visitorList.get(visitorListIdx++));
+			} else if (updatedListIdx < p_updatedList.size()) {
+				if (visitorListIdx >= m_visitorList.size() || 
+						p_updatedList.get(updatedListIdx).getThreadID() > 
+							m_visitorList.get(visitorListIdx).getThreadID()) {
+					
+					// Here we are adding the visitor from the server, so we add
+					// it to the database as well as our in-memory list
+					dbHelper.addOrUpdateThread(p_updatedList.get(updatedListIdx));
+					tempVisitorList.add(p_updatedList.get(updatedListIdx++));
+				} else {
+					tempVisitorList.add(m_visitorList.get(visitorListIdx++));
+				}
+			}
+		}
+		
+		// Replace 
+		m_visitorList.clear();
+		m_visitorList.addAll(tempVisitorList);
+		return m_visitorList;
+	}
 
 	public List<ChatMessage> getMessages(long p_threadID) {
 		MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
@@ -321,6 +423,12 @@ public class ChatUtils {
 			int errorCode = jResult.getInt("errorCode");
 			if (errorCode == SERVER_ERROR_SUCCESS) {
 				p_thread.setToken(jResult.getInt("chattoken"));
+				p_thread.setChattingWithGuest(true);
+				
+				// Update the thread in the database
+				MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
+				dbHelper.addOrUpdateThread(p_thread);
+				reloadArchivedVisitorList();
 				return true;
 			}
 			else {
@@ -358,6 +466,23 @@ public class ChatUtils {
 			int errorCode = jResult.getInt("errorCode");
 			if (errorCode == SERVER_ERROR_SUCCESS) {
 				p_thread.setToken(jResult.getInt("chattoken"));
+				
+				// Determine if the operator is already actively chatting with this user
+				if (p_thread.getState() == ChatThread.STATE_CHATTING &&
+					p_thread.getAgentID() == monitoredSite.getOperator().getOperatorID_R()) {
+					p_thread.setChattingWithGuest(true);
+				}
+				
+				// Save this thread in the database if this is the first time we are viewing it
+				if (!p_thread.isViewed()) {
+					p_thread.setViewed(true);
+					MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
+					dbHelper.addOrUpdateThread(p_thread);
+					
+					// Notify any listeners
+					reloadArchivedVisitorList();
+				}
+
 				return true;
 			}
 			else {
@@ -374,12 +499,11 @@ public class ChatUtils {
 
 	/**
 	 * Description:
-	 * 	View a conversation. This indicates to the server that the operator wants
-	 *  only to view the conversation 
+	 * 	Gets a list of new messages for a given thread from the server 
 	 * 
-	 * @param p_thread: The URL where the Mibew web service is hosted
+	 * @param p_thread: 
 	 * 
-	 * @return boolean
+	 * @return List<ChatMessage>
 	 * 
 	 * @throws	MibewMobException:
 	 * 
@@ -388,8 +512,8 @@ public class ChatUtils {
 	public List<ChatMessage> getNewMessagesFromServer(ChatThread p_thread) 
 			throws MibewMobException {
 		MonitoredSite monitoredSite = m_monitoredSitesMap.get((int) p_thread.getServerID());
-		String serverURL = monitoredSite.getServer().getWebServiceURL();
-		String oprtoken = monitoredSite.getOperator().getToken();
+		final String serverURL = monitoredSite.getServer().getWebServiceURL();
+		final String oprtoken = monitoredSite.getOperator().getToken();
 		
 		List<ChatMessage> messageList = new ArrayList<ChatMessage>();
 		
@@ -399,15 +523,37 @@ public class ChatUtils {
 		try {
 			int errorCode = jNewMessages.getInt("errorCode");
 
-			if (errorCode == SERVER_ERROR_SUCCESS &&
-					jNewMessages.getInt("messageCount") > 0) {
-				
-				JSONArray jMessageList = jNewMessages.getJSONArray("threadList");
-				for (int j = 0; j < jMessageList.length(); j++) {
-					messageList.add(new ChatMessage(jMessageList.getJSONObject(j)));
+			if (errorCode == SERVER_ERROR_SUCCESS) {
+				if (jNewMessages.getInt("messageCount") > 0) {
+					final StringBuilder sbMsgIdList = new StringBuilder();
+					
+					JSONArray jMessageList = jNewMessages.getJSONArray("messageList");
+					for (int j = 0; j < jMessageList.length(); j++) {
+						messageList.add(new ChatMessage(jMessageList.getJSONObject(j), p_thread.getID()));
+						if (j != 0) {
+							sbMsgIdList.append(",");
+						}
+						sbMsgIdList.append(messageList.get(j).getMessageID_R());
+					}
+					
+					// Save these messages to the database.
+					MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
+					List<ChatMessage> addedMessages = dbHelper.addNewChatMessages(messageList);
+					
+					// Launch a new thread to send the acknowledgment.
+					Thread ackThread = new Thread(new Runnable() {
+						@Override
+						public void run() {
+							WebServiceBridge.acknowledgeMessages(serverURL, oprtoken, sbMsgIdList.toString());
+						}
+					});
+					
+					ackThread.start();
+					
+					return addedMessages;
+				} else {
+					return null;
 				}
-				
-				return messageList;
 			}
 			else {
 				throw new MibewMobException("Server error (" + errorCode + 
@@ -438,13 +584,24 @@ public class ChatUtils {
 		String serverURL = monitoredSite.getServer().getWebServiceURL();
 		String oprtoken = monitoredSite.getOperator().getToken();
 
+		p_message.setOperatorGuid(monitoredSite.getOperator().getOperatorID_R());
+		p_message.setOperatorName(monitoredSite.getOperator().getCommonName());
+		
+		// Add the message to the database first
+		MibewMobSQLiteHelper dbHelper = new MibewMobSQLiteHelper(m_context);
+		long messageID = dbHelper.addNewChatMessage(p_message);
+		p_message.setMessageID(messageID);
+
+		// Then post the message to the server
 		JSONObject jResponse = 
 				WebServiceBridge.sendMessage(serverURL, oprtoken, p_thread.getThreadID(),
-						p_thread.getToken(), p_message.getMessage());
+						p_thread.getToken(), (int)messageID, p_message.getMessage());
 		try {
 			int errorCode = jResponse.getInt("errorCode");
 			if (errorCode == SERVER_ERROR_SUCCESS) {
-				// TODO: Update the message with details from the server
+				p_message.setMessageID_R(jResponse.getInt("messageidr"));
+				p_message.setTimeCreated(new Timestamp(jResponse.getLong("timestamp") * 1000));
+				dbHelper.updateMessage(p_message);
 				return true;
 			}
 			else {
@@ -467,5 +624,13 @@ public class ChatUtils {
 
 	public MonitoredSite getSiteWithID(long p_serverID) {
 		return m_monitoredSitesMap.get((int)p_serverID);
+	}
+
+	public ChatThread getThreadToExpand() {
+		return m_threadToExpand;
+	}
+
+	public void setThreadToExpand(ChatThread threadToExpand) {
+		m_threadToExpand = threadToExpand;
 	}
 }

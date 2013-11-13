@@ -5,7 +5,7 @@ import java.util.Locale;
 import com.scalior.mibewmob.R;
 import com.scalior.mibewmob.fragments.MonitoredSitesListFragment;
 import com.scalior.mibewmob.fragments.VisitorListFragment;
-import com.scalior.mibewmob.services.ChatService;
+import com.scalior.mibewmob.services.PollingService;
 
 import android.app.ActionBar;
 import android.app.FragmentTransaction;
@@ -22,6 +22,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class ChatActivity extends FragmentActivity implements
 		ActionBar.TabListener {
@@ -51,7 +52,8 @@ public class ChatActivity extends FragmentActivity implements
 
 		// This is our main activity. Start the chat service here if it wasn't
 		// started on reboot.
-		startService(new Intent(this, ChatService.class));
+		startService(new Intent(this, PollingService.class));
+		///Toast.makeText(this, "Service started in chatactivity", Toast.LENGTH_LONG).show();
 		
 		// Set up the action bar.
 		final ActionBar actionBar = getActionBar();
@@ -164,8 +166,8 @@ public class ChatActivity extends FragmentActivity implements
 
 		@Override
 		public int getCount() {
-			// Show 3 total pages.
-			return 3;
+			// Show 2 total pages.
+			return 2;
 		}
 
 		@Override
@@ -176,8 +178,6 @@ public class ChatActivity extends FragmentActivity implements
 				return getString(R.string.title_chat_history).toUpperCase(l);
 			case 1:
 				return getString(R.string.title_chat_servers).toUpperCase(l);
-			case 2:
-				return getString(R.string.title_user_identities).toUpperCase(l);
 			}
 			return null;
 		}

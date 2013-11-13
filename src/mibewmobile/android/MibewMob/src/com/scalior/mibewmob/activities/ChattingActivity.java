@@ -9,22 +9,34 @@ import com.scalior.mibewmob.ChatUtils;
 import com.scalior.mibewmob.MessageListAdapter;
 import com.scalior.mibewmob.MibewMobException;
 import com.scalior.mibewmob.R;
+import com.scalior.mibewmob.interfaces.ChatThreadListener;
 import com.scalior.mibewmob.model.ChatMessage;
 import com.scalior.mibewmob.model.ChatThread;
+import com.scalior.mibewmob.services.PollingService;
+import com.scalior.mibewmob.services.PollingService.PollingServiceBinder;
 
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.app.ListActivity;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ListView;
 import android.widget.Toast;
 import android.support.v4.app.NavUtils;
+import android.text.Editable;
+import android.text.TextWatcher;
 
-public class ChattingActivity extends ListActivity {
+public class ChattingActivity extends ListActivity 
+								implements ChatThreadListener {
 	private ChatUtils m_serverUtils;
 	private ChatThread m_chatThread;
 	private List<ChatMessage> m_messageList;
@@ -35,6 +47,7 @@ public class ChattingActivity extends ListActivity {
 	private MenuItem m_initiateChatMI;
 	private ImageButton m_sendBtn;
 	private EditText m_messageBox;
+	private ListView m_vMessageList;
 	
 	// Some constants used by the handler for this activity
 	private static final int COMMAND_VIEWTHREAD 	= 1;
@@ -42,6 +55,19 @@ public class ChattingActivity extends ListActivity {
 	private static final int COMMAND_NEWMESSAGES	= 3;
 	private static final int COMMAND_SENDMESSAGE	= 4;
 	
+	// Service connection and binding variables
+	protected PollingServiceBinder m_pollingServiceBinder; 
+	private boolean m_isBound;
+	private ServiceConnection m_connection = new ServiceConnection() {
+		public void onServiceConnected(ComponentName className, IBinder service) {
+			m_pollingServiceBinder = (PollingServiceBinder)service;
+		}
+		
+		public void onServiceDisconnected(ComponentName className) {
+			m_pollingServiceBinder = null;
+		}
+	};
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -55,43 +81,68 @@ public class ChattingActivity extends ListActivity {
 		// Get views we are interested in
 		m_messageBox = (EditText)findViewById(R.id.messageBox);
 		m_sendBtn = (ImageButton)findViewById(R.id.sendButton);
-
+		m_vMessageList = this.getListView();
+		m_vMessageList.setStackFromBottom(true);
+		m_vMessageList.setTranscriptMode(ListView.TRANSCRIPT_MODE_NORMAL);
+		
 		m_sendBtn.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
 				sendMessage();
 			}
 		});
+		
+		m_messageBox.addTextChangedListener(new TextWatcher() {
+
+			@Override
+			public void afterTextChanged(Editable arg0) {
+				// Do nothing
+			}
+
+			@Override
+			public void beforeTextChanged(CharSequence arg0, int arg1,
+					int arg2, int arg3) {
+				// Do nothing;
+			}
+
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before,
+					int count) {
+				if (s.length() > 0) {
+					m_sendBtn.setVisibility(View.VISIBLE);
+				} else {
+					m_sendBtn.setVisibility(View.INVISIBLE);
+				}
+			}
+			
+		});
 			
 		// Extract the thread of interest
-		if (getIntent().getExtras().containsKey("position")) {
-			int position = getIntent().getExtras().getInt("position");
-			int threadID = getIntent().getExtras().getInt("threadid");
+		m_chatThread = m_serverUtils.getThreadToExpand();
+		m_serverUtils.setThreadToExpand(null);
+
+		m_messageList = m_serverUtils.getMessages(m_chatThread.getID());
+		if (m_messageList == null) {
+			m_messageList = new ArrayList<ChatMessage>();
+		}
+ 
+		m_listAdapter = new MessageListAdapter(this, 
+				R.layout.chatbubbleitem,
+				m_messageList);
+		setListAdapter(m_listAdapter);
+
+		doBindService();
 		
-			 m_chatThread = m_serverUtils.getVisitorList().get(position);
-			 m_messageList = m_serverUtils.getMessages(m_chatThread.getID());
-			 if (m_messageList == null) {
-				 m_messageList = new ArrayList<ChatMessage>();
-			 }
-			 
-			// For sanity, confirm that we retrieved the right thread
-			if (threadID == m_chatThread.getThreadID()) {
-				// Load messages pertaining to this thread.
-				m_listAdapter = new MessageListAdapter(this, 
-						R.layout.chatbubbleitem,
-						m_messageList);
-				setListAdapter(m_listAdapter);
-			}
-			else {
-				// TODO: Notify user of error and prompt to go back
-			}
-			
-			if (!m_chatThread.isViewed()) {
-				viewThread();
-			}
-			else {
-				getNewMessages();
-			}
+		if (!m_chatThread.isChattingWithGuest()) {
+			m_messageBox.setFocusable(false);
+			m_messageBox.setFocusableInTouchMode(false);
+			m_messageBox.setHint("Tap the start chat icon");
+		}
+
+		if (!m_chatThread.isViewed()) {
+			viewThread();
+		} else {
+			getNewMessages();
 		}
 	}
 
@@ -111,6 +162,9 @@ public class ChattingActivity extends ListActivity {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.chatting, menu);
 		m_initiateChatMI = menu.findItem(R.id.action_initiate_chat);
+		if (m_chatThread.isChattingWithGuest()) {
+			m_initiateChatMI.setVisible(false);
+		}
 		
 		return true;
 	}
@@ -186,13 +240,13 @@ public class ChattingActivity extends ListActivity {
 				Message msg;
 				try {
 					List<ChatMessage> newMessages = m_serverUtils.getNewMessagesFromServer(m_chatThread);
-					int count = newMessages.size();
-					// Add these new messages to the existing list
-					// TODO: We need to mark messages that have been received as sync'ed.
-					//		 For now, each request for new messages will send the entire list
-					m_messageList.clear();
-					m_messageList.addAll(newMessages);
-
+					int count = 0;
+					if (newMessages != null) {
+						count = newMessages.size();
+						// Add these new messages to the existing list
+						m_messageList.addAll(newMessages);
+					}
+					
 					msg = m_handler.obtainMessage(COMMAND_NEWMESSAGES, 
 							ChatUtils.SERVER_ERROR_SUCCESS, count);
 				} catch (MibewMobException e) {
@@ -201,6 +255,9 @@ public class ChattingActivity extends ListActivity {
 							ChatUtils.SERVER_ERROR_UNKNOWN, 0);
 				}
 				m_handler.sendMessage(msg);
+				
+				// Now that we queried the initial set of messages, subscribe to the new messages event
+				m_pollingServiceBinder.subscribeToNewMessages(m_chatThread, ChattingActivity.this);
 			}
 		});
 		
@@ -209,11 +266,13 @@ public class ChattingActivity extends ListActivity {
 
 	protected void sendMessage() {
 		// Add the message to the message list first
-		final ChatMessage chatMessage = new ChatMessage(m_chatThread.getThreadID(),
+		final ChatMessage chatMessage = new ChatMessage(m_chatThread.getID(),
 				m_messageBox.getText().toString(),
-				0, 45, null, null);
+				0, 0, null, null);
 		m_messageList.add(chatMessage);
-		m_listAdapter.notifyDataSetChanged();
+		m_messageBox.setText("");
+		m_messageBox.requestFocus();
+		updateMessageList();
 		
 		Thread thread = new Thread(new Runnable() {
 
@@ -234,6 +293,45 @@ public class ChattingActivity extends ListActivity {
 		thread.start();
 	}
 
+	private void updateMessageList() {
+		m_listAdapter.notifyDataSetChanged();
+	}
+	
+	// This callback is invoked when we receive new messages for this thread
+	@Override
+	public void onNewMessages(List<ChatMessage> p_newMessages) {
+		Message msg;
+		int count = p_newMessages.size();
+		// Add these new messages to the existing list
+		m_messageList.addAll(p_newMessages);
+
+		msg = m_handler.obtainMessage(COMMAND_NEWMESSAGES, 
+				ChatUtils.SERVER_ERROR_SUCCESS, count);
+		m_handler.sendMessage(msg);
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		doUnbindService();
+	}
+	
+	private void doBindService() {
+		getApplicationContext().bindService(
+				new Intent(getApplicationContext(), PollingService.class),
+				m_connection, Context.BIND_AUTO_CREATE);
+
+		m_isBound = true;
+	}
+	
+	private void doUnbindService() {
+		if (m_isBound) {
+			m_pollingServiceBinder.unsubscribeFromNewMessages(m_chatThread, this);
+			getApplicationContext().unbindService(m_connection);
+			m_isBound = false;
+		}
+	}
+	
 	private static class MessageHandler extends Handler {
 		private WeakReference<ChattingActivity> m_activity;
 
@@ -250,8 +348,11 @@ public class ChattingActivity extends ListActivity {
 		public void handleMessage(Message msg) {
 			if (msg.what == COMMAND_STARTCHAT) {
 				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
-					// Disable the start chat now icon
+					// Disable the start chat now icon and enable the message box
 					m_activity.get().m_initiateChatMI.setVisible(false);
+					m_activity.get().m_messageBox.setFocusable(true);
+					m_activity.get().m_messageBox.setFocusableInTouchMode(true);
+					m_activity.get().m_messageBox.setHint(null);
 				}
 				else {
 					Toast.makeText(m_activity.get(), "Failed to start the chat. Try again", Toast.LENGTH_SHORT).show();
@@ -268,13 +369,13 @@ public class ChattingActivity extends ListActivity {
 				// arg2 is the number of new messages added
 				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
 					if (msg.arg2 > 0) {
-						m_activity.get().m_listAdapter.notifyDataSetChanged();
+						m_activity.get().updateMessageList();
 					}
 				}
 			}
 			else if (msg.what == COMMAND_SENDMESSAGE) {
 				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
-					m_activity.get().m_listAdapter.notifyDataSetChanged();
+					// Nothing to do for now
 				}
 				else {
 					Toast.makeText(m_activity.get(), "Failed to send the message. Will attempt to send it again", Toast.LENGTH_SHORT).show();
