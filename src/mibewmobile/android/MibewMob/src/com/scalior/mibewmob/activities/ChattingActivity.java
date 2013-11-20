@@ -45,6 +45,7 @@ public class ChattingActivity extends ListActivity
 	
 	// Views to keep track off
 	private MenuItem m_initiateChatMI;
+	private MenuItem m_closeChatMI;
 	private ImageButton m_sendBtn;
 	private EditText m_messageBox;
 	private ListView m_vMessageList;
@@ -54,6 +55,7 @@ public class ChattingActivity extends ListActivity
 	private static final int COMMAND_STARTCHAT 		= 2;
 	private static final int COMMAND_NEWMESSAGES	= 3;
 	private static final int COMMAND_SENDMESSAGE	= 4;
+	private static final int COMMAND_CLOSECHAT		= 5;
 	
 	// Service connection and binding variables
 	protected PollingServiceBinder m_pollingServiceBinder; 
@@ -136,7 +138,12 @@ public class ChattingActivity extends ListActivity
 		if (!m_chatThread.isChattingWithGuest()) {
 			m_messageBox.setFocusable(false);
 			m_messageBox.setFocusableInTouchMode(false);
-			m_messageBox.setHint("Tap the start chat icon");
+			
+			if (m_chatThread.getState() == ChatThread.STATE_CLOSED) {
+				m_messageBox.setHint("Closed session. View messages only");
+			} else {
+				m_messageBox.setHint("Tap the start chat icon");
+			}
 		}
 
 		if (!m_chatThread.isViewed()) {
@@ -162,8 +169,11 @@ public class ChattingActivity extends ListActivity
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.chatting, menu);
 		m_initiateChatMI = menu.findItem(R.id.action_initiate_chat);
+		m_closeChatMI = menu.findItem(R.id.action_close_chat);
+		
 		if (m_chatThread.isChattingWithGuest()) {
 			m_initiateChatMI.setVisible(false);
+			m_closeChatMI.setVisible(true);
 		}
 		
 		return true;
@@ -183,13 +193,18 @@ public class ChattingActivity extends ListActivity
 			NavUtils.navigateUpFromSameTask(this);
 			return true;
 			
+		case R.id.action_settings:
+			Intent settings = new Intent(this, SettingsActivity.class);
+			startActivity(settings);
+			return true;
+
 		case R.id.action_initiate_chat:
-			// Change the background to a rotating icon and disable any clicking
-			// Log run a background thread that starts the chat.
+			// TODO: Change the background to a rotating icon and disable any clicking
+			// Run a background thread that starts the chat.
 			// On success, enable the chat box
 			
 			m_initiateChatMI.setEnabled(false);
-			Thread thread = new Thread(new Runnable() {
+			Thread thrInitiate = new Thread(new Runnable() {
 
 				@Override
 				public void run() {
@@ -205,7 +220,30 @@ public class ChattingActivity extends ListActivity
 				}
 			});
 			
-			thread.start();
+			thrInitiate.start();
+			return true;
+			
+		case R.id.action_close_chat:
+			// TODO: Change the background to a rotating icon and disable any clicking
+			
+			m_closeChatMI.setEnabled(false);
+			Thread thrClose = new Thread(new Runnable() {
+
+				@Override
+				public void run() {
+					Message msg;
+					try {
+						m_serverUtils.closeThread(m_chatThread);
+						msg = m_handler.obtainMessage(COMMAND_CLOSECHAT, ChatUtils.SERVER_ERROR_SUCCESS, 0);
+					} catch (MibewMobException e) {
+						// TODO: Add entry to log file
+						msg = m_handler.obtainMessage(COMMAND_CLOSECHAT, ChatUtils.SERVER_ERROR_UNKNOWN, 0);
+					}
+					m_handler.sendMessage(msg);
+				}
+			});
+			
+			thrClose.start();
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
@@ -350,6 +388,7 @@ public class ChattingActivity extends ListActivity
 				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
 					// Disable the start chat now icon and enable the message box
 					m_activity.get().m_initiateChatMI.setVisible(false);
+					m_activity.get().m_closeChatMI.setVisible(true);
 					m_activity.get().m_messageBox.setFocusable(true);
 					m_activity.get().m_messageBox.setFocusableInTouchMode(true);
 					m_activity.get().m_messageBox.setHint(null);
@@ -379,6 +418,14 @@ public class ChattingActivity extends ListActivity
 				}
 				else {
 					Toast.makeText(m_activity.get(), "Failed to send the message. Will attempt to send it again", Toast.LENGTH_SHORT).show();
+				}
+			}
+			else if (msg.what == COMMAND_CLOSECHAT) {
+				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
+					m_activity.get().m_initiateChatMI.setVisible(false);
+				}
+				else {
+					Toast.makeText(m_activity.get(), "Failed to close the chat. Try again later", Toast.LENGTH_SHORT).show();
 				}
 			}
 		}

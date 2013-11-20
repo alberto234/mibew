@@ -1,5 +1,7 @@
 package com.scalior.mibewmob.model;
 
+import java.util.Comparator;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -197,4 +199,28 @@ public class ChatThread {
 		m_agentID = agentID;
 	}
 	
+	// Comparator for ChatThreads.
+	// This comparator compares using state, time stamp
+	public static class ChatThreadComparatorDesc implements Comparator<ChatThread> {
+
+		@Override
+		public int compare(ChatThread lhs, ChatThread rhs) {
+			// TODO For now, use state, id.
+			if ((lhs.getState() == STATE_CLOSED && rhs.getState() == STATE_CLOSED) ||
+					(lhs.getState() != STATE_CLOSED && rhs.getState() != STATE_CLOSED))	{
+				// They both have the same state (closed or not closed), compare id
+				if (lhs.getThreadID() > rhs.getThreadID()) {
+					return -1; 
+				} else if (lhs.getThreadID() < rhs.getThreadID()) {
+					return 1;
+				} else {
+					return 0;
+				}
+			} else if (lhs.getState() == STATE_CLOSED){
+				return 1;
+			} else {
+				return -1;
+			}
+		}		
+	}
 }

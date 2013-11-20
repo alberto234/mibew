@@ -6,19 +6,23 @@ require_once('../libs/chat.php');
 require_once('../libs/userinfo.php');
 require_once('../libs/groups.php');
 
-/* Mobile client error codes
-	0 = success
-	1 = login failed
-	2 = invalid operator token
-	3 = invalid thread
-	4 = cannot take over
-	5 = confirm take over
-	6 = cannot view thread
-	7 = wrong thread
-	8 = invalid chat token
-	9 = invalid command
-   10 = unknown error
-*/
+// Mobile client error codes
+define(ERROR_SUCCESS,				 0);
+define(ERROR_LOGIN_FAILED,			 1);
+define(ERROR_INVALID_OPR_TOKEN,		 2);
+define(ERROR_INVALID_THREAD,		 3);
+define(ERROR_CANT_TAKEOVER,			 4);
+define(ERROR_CONFIRM_TAKEOVER,		 5);
+define(ERROR_CANT_VIEW_THREAD,		 6);
+define(ERROR_WRONG_THREAD,			 7);
+define(ERROR_INVALID_CHAT_TOKEN,	 8);
+define(ERROR_INVALID_COMMAND,		 9);
+define(ERROR_UNKNOWN,				10);
+
+// Operator status codes. From inspection I can see that these are currently
+// implied as 0 for availabe, 1 for away
+define(OPR_STATUS_ON,		 0);
+define(OPR_STATUS_AWAY,		 1);
 
 
 $url = "http://nsoesie.dyndns-home.com:5242/transmawfoods/webim";
@@ -62,14 +66,12 @@ function mobile_login($username, $password) {
 						 'email' => $op['vcemail'],
 						 'status' => $op['istatus'],
 						 'lastvisited' => $op['dtmlastvisited'],
-						 'errorMsg' => 'success',
-						 'errorCode' => 0);
+						 'errorCode' => ERROR_SUCCESS);
 			return $out;
 		}
 	}
 	
-	$out = array('errorMsg' => 'login failed',
-				 'errorCode' => 1);
+	$out = array('errorCode' => ERROR_LOGIN_FAILED);
 	
 	return $out;
 }
@@ -82,8 +84,7 @@ function chat_server_status() {
 				 'logoURL' => $logoURL,
 				 'mibewMobVersion' => $mibewMobVersion,
 				 'server_status' => 'on',
-				 'errorCode' => 0,
-				 'errorMsg' => 'success');
+				 'errorCode' => ERROR_SUCCESS);
 				 
 	return $out;
 }
@@ -130,12 +131,11 @@ function get_active_visitors($oprtoken, $deviceVisitors) {
 	
 	if ($operatorId != NULL) {
 		$out = get_pending_threads($deviceVisitors);
-		$out['errorCode'] = 0;
-		$out['errorMsg'] = 'success';
+		$out['errorCode'] = ERROR_SUCCESS;
+		notify_operator_alive($operatorId, OPR_STATUS_ON);
 	}
 	else {
-		$out = array('errorCode' => 2,
-					 'errorMsg' => 'invalid operator token');
+		$out = array('errorCode' => ERROR_INVALID_OPR_TOKEN);
 	}
 	
 	return $out;
@@ -207,7 +207,7 @@ function get_pending_threads($deviceVisitors)
 	//foreach ($output as $thr) {
 		//print myiconv($webim_encoding, "utf-8", $thr);
 	//}
-	
+
 	return $output;
 }
 
@@ -305,8 +305,7 @@ $can_viewthreads, $can_takeover, $mysqlprefix;
 function start_chat($oprtoken, $threadid) {
 	$operatorId = operator_from_token($oprtoken);
 	if ($operatorId == NULL) {
-		return array('errorCode' => 2,
-					 'errorMsg' => 'invalid operator token');
+		return array('errorCode' => ERROR_INVALID_OPR_TOKEN);
 	}
 
 	$operator = operator_by_id($operatorId);
@@ -314,8 +313,7 @@ function start_chat($oprtoken, $threadid) {
 
 	$thread = thread_by_id($threadid);
 	if (!$thread || !isset($thread['ltoken'])) {
-		return array('errorCode' => 3,
-					 'errorMsg' => 'invalid thread');
+		return array('errorCode' => ERROR_INVALID_THREAD);
 	}
 
 	// If token is not set, this is a new chat session for this operator
@@ -327,24 +325,21 @@ function start_chat($oprtoken, $threadid) {
 			$operator['operatorid'] != $thread['agentId']) {
 			
 			if (!is_capable($can_takeover, $operator)) {
-				return array('errorCode' => 4,
-							 'errorMsg' => 'cannot take over');
+				return array('errorCode' => ERROR_CANT_TAKEOVER);
 			}
 			
 			if ($forcetake == false) {
 				// Todo. Confirm that you want to force the takeover of the conversation
 				// 1 month later and I'm not sure what this should do. This is a potential
 				// bug that needs to be reviewed.
-				return array('errorCode' => 5,
-							 'errorMsg' => 'confirm take over');
+				return array('errorCode' => ERROR_CONFIRM_TAKEOVER);
 			}
 		}
 
 		if (!$viewonly) {
 			take_thread($thread, $operator);
 		} else if (!is_capable($can_viewthreads, $operator)) {
-			return array('errorCode' => 6,
-						 'errorMsg' => 'cannot view thread');
+			return array('errorCode' => ERROR_CANT_VIEW_THREAD);
 		}
 		
 		$chattoken = $thread['ltoken'];
@@ -352,18 +347,15 @@ function start_chat($oprtoken, $threadid) {
 
 	// Chat token may be different if token was supplied from the http request
 	if ($chattoken != $thread['ltoken']) {
-		return array('errorCode' => 7,
-					 'errorMsg' => 'wrong thread');
+		return array('errorCode' => ERROR_WRONG_THREAD);
 	}
 	
 	if ($thread['agentId'] != $operator['operatorid'] && 
 		!is_capable($can_viewthreads, $operator)) {
-		return array('errorCode' => 6,
-					 'errorMsg' => 'cannot view thread');
+		return array('errorCode' => ERROR_CANT_VIEW_THREAD);
 	}
 	
-	$out = array('errorCode' => 0,
-				 'errorMsg' => 'success',
+	$out = array('errorCode' => ERROR_SUCCESS,
 				 'threadid' => $threadid,
 				 'chattoken' => $chattoken);
 	return $out;
@@ -380,20 +372,17 @@ function start_chat($oprtoken, $threadid) {
 function get_new_messages($oprtoken, $threadid, $chattoken) {
 	$operatorId = operator_from_token($oprtoken);
 	if ($operatorId == NULL) {
-		return array('errorCode' => 2,
-					 'errorMsg' => 'invalid operator token');
+		return array('errorCode' => ERROR_INVALID_OPR_TOKEN);
 	}
 
 	$operator = operator_by_id($operatorId);
 	$thread = thread_by_id($threadid);
 	if (!$thread || !isset($thread['ltoken'])) {
-		return array('errorCode' => 3,
-					 'errorMsg' => 'invalid thread');
+		return array('errorCode' => ERROR_INVALID_THREAD);
 	}
 	
 	if ($chattoken != $thread['ltoken']) {
-		return array('errorCode' => 8,
-					 'errorMsg' => 'invalid chat token');
+		return array('errorCode' => ERROR_INVALID_CHAT_TOKEN);
 	}
 	
 	return get_unsynced_messages($threadid);
@@ -426,8 +415,7 @@ function get_unsynced_messages($threadid) {
 
 	mysql_close($link);
 
-	$out = array('errorCode' => 0,
-				 'errorMsg' => 'success');
+	$out = array('errorCode' => ERROR_SUCCESS);
 				 
 	$out['messageCount'] = count($rows);
 
@@ -451,20 +439,17 @@ function get_unsynced_messages($threadid) {
 function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg) {
 	$operatorId = operator_from_token($oprtoken);
 	if ($operatorId == NULL) {
-		return array('errorCode' => 2,
-					 'errorMsg' => 'invalid operator token');
+		return array('errorCode' => ERROR_INVALID_OPR_TOKEN);
 	}
 
 	$operator = operator_by_id($operatorId);
 	$thread = thread_by_id($threadid);
 	if (!$thread || !isset($thread['ltoken'])) {
-		return array('errorCode' => 3,
-					 'errorMsg' => 'invalid thread');
+		return array('errorCode' => ERROR_INVALID_THREAD);
 	}
 	
 	if ($chattoken != $thread['ltoken']) {
-		return array('errorCode' => 8,
-					 'errorMsg' => 'invalid chat token');
+		return array('errorCode' => ERROR_INVALID_CHAT_TOKEN);
 	}
 
 	// Steps needed to post a message
@@ -485,8 +470,7 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg)
 	
 	// 2 - If so, send back the devicemessageid, messageid, timestamp, then done
 	if ($result != NULL) {
-		return array('errorCode' => 0,
-					 'errorMsg' => 'success',
+		return array('errorCode' => ERROR_SUCCESS,
 					 'messageidr' => $result['messageid'],
 					 'messageidl' => $opMsgIdL,
 					 'timestamp' => $result['unix_timestamp(msgtimestamp)']);
@@ -519,8 +503,7 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg)
 	
 	mysql_close($link);
 	
-	return array('errorCode' => 0,
-			     'errorMsg' => 'success',
+	return array('errorCode' => ERROR_SUCCESS,
 				 'messageidr' => $postedid,
 				 'messageidl' => $opMsgIdL,
 				 'timestamp' => $result['unix_timestamp(dtmcreated)']);
@@ -562,10 +545,32 @@ function ack_messages($oprtoken, $msgList) {
 	perform_query($query, $link);
 
 
-	return array('errorCode' => 0,
-	 			  'errorMsg' => 'success');
+	return array('errorCode' => ERROR_SUCCESS);
 }
 	
+/***********
+ * Method:	
+ *		close_thread_mobile
+ * Description:
+ *	  	Close the thread with given thread id
+ * Author:
+ * 		ENsoesie 	11/13/2013	Creation
+ ***********/
+function close_thread_mobile($oprtoken, $threadid) {
+	$operatorId = operator_from_token($oprtoken);
+	if ($operatorId == NULL) {
+		return array('errorCode' => ERROR_INVALID_OPR_TOKEN);
+	}
+
+	$thread = thread_by_id($threadid);
+	if (!$thread || !isset($thread['ltoken'])) {
+		return array('errorCode' => ERROR_INVALID_THREAD);
+	}
+	
+	close_thread($thread, false);
+	
+	return array('errorCode' => ERROR_SUCCESS);
+}
 	
 /***********
  * Method:	
@@ -576,8 +581,7 @@ function ack_messages($oprtoken, $msgList) {
  * 		ENsoesie 	10/19/2013	Creation
  ***********/
  function invalid_command() {
-	 return array('errorCode' => 9,
-	 			  'errorMsg' => 'Invalid command');
+	 return array('errorCode' => ERROR_INVALID_COMMAND);
  }
 	 
 /***********

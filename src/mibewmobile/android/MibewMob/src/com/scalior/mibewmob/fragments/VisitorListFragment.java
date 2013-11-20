@@ -83,7 +83,7 @@ public class VisitorListFragment extends ListFragment
 			public void run() {
 				try {
 					m_serverUtils.checkForNewVisitors(true);
-					onUpdateList(m_serverUtils.getVisitorList());
+					onListUpdated();
 				} catch (MibewMobException e) {
 					// TODO This is not fatal, just log it.
 					e.printStackTrace();
@@ -137,6 +137,7 @@ public class VisitorListFragment extends ListFragment
 			startActivity(showChat);
 		}
 	}
+	
 
 	/*private List<ChatThread> mergeWithDb(List<ChatThread> p_updatedList) {
 		// This method updates the internal m_visitorList as well as returns it.
@@ -170,7 +171,7 @@ public class VisitorListFragment extends ListFragment
 	
 	
 	
-	@Override
+/*	@Override
 	public void onUpdateList(final List<ChatThread> p_activeVisitors) {
 		if (p_activeVisitors != null && p_activeVisitors.size() > 0) {
 			synchronized(m_visitorListLock) {
@@ -187,9 +188,25 @@ public class VisitorListFragment extends ListFragment
 				}
 			});
 		}
+	}*/
+	
+	@Override
+	public void onListUpdated() {
+		synchronized(m_visitorListLock) {
+			m_visitorList.clear();
+			m_visitorList.addAll(m_serverUtils.getVisitorList());
+		}
+
+		getActivity().runOnUiThread(new Runnable() {
+
+			@Override
+			public void run() {
+				m_visitorListAdapter.notifyDataSetChanged();
+				showList();
+			}
+		});
 	}
-	
-	
+
 	private void doBindService() {
 		getActivity().getApplicationContext().bindService(
 				new Intent(getActivity().getApplicationContext(), PollingService.class),

@@ -30,6 +30,7 @@ import android.net.http.AndroidHttpClient;
  *
  */
 public class WebServiceBridge {
+	
 	private static final String MIBEWMOB_RELATIVE_PATH = "mobile/index.php";
 	
 	/**
@@ -40,14 +41,16 @@ public class WebServiceBridge {
 	 * @param queryList: 
 	 * @return JSONObject: A JSON object that holds server information 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  9/23/2013
 	 */
-	private static JSONObject runQuery(String serverURL, List<NameValuePair> queryList) {
+	private static JSONObject runQuery(String serverURL, List<NameValuePair> queryList) 
+			throws MibewMobException {
 		
 		// Check inputs
 		if (serverURL == null || serverURL.isEmpty()) {
-			return null;
-			// TODO: implement exception-based error handling
+			throw new MMInvalidParamException("Invalid server URL");
 		}
 		
 		JSONObject jRetVal = null;
@@ -98,13 +101,15 @@ public class WebServiceBridge {
 		    jRetVal = new JSONObject(result);
 		    
 		} catch (IOException e) {
-			e.printStackTrace();
-			jRetVal = null;
+			MibewMobLogger.Log("IO Error reaching server " + serverURL + "\n" + e.getMessage());
+			throw new MMIOException("IO Error reaching server " + serverURL, e);
 		} catch (JSONException e) {
 			e.printStackTrace();
 			jRetVal = null;
+		} finally {
+			httpClient.close();
 		}
-		
+
 		return jRetVal;
 	}
 
@@ -113,9 +118,11 @@ public class WebServiceBridge {
 	 * 				 http://www.example.com/webim
 	 * @return JSONObject: A JSON object that holds server information 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  9/23/2013
 	 */
-	public static JSONObject validateServer(String p_url) {
+	public static JSONObject validateServer(String p_url) throws MibewMobException {
 		String serverURL = p_url;
 		if (!serverURL.endsWith("/")) {
 			serverURL += "/";
@@ -147,9 +154,12 @@ public class WebServiceBridge {
 	 *
 	 * @return JSONObject: A JSON object that holds the list of active visitors 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  10/19/2013
 	 */
-	public static JSONObject loginOperator(String p_serverURL, String p_username, String p_password) {
+	public static JSONObject loginOperator(String p_serverURL, String p_username, String p_password) 
+			throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "login"));
 		queryList.add(new BasicNameValuePair("username", p_username));
@@ -163,9 +173,12 @@ public class WebServiceBridge {
 	 * 	Get the list of active visitors for a particular site.
 	 * @return JSONObject: A JSON object that holds the list of active visitors 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  10/19/2013
 	 */
-	public static JSONObject getActiveVisitors(String p_serverURL, String p_oprtoken, String activeVisitors) {
+	public static JSONObject getActiveVisitors(String p_serverURL, String p_oprtoken, String activeVisitors)
+			throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "visitorlist"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
@@ -181,9 +194,12 @@ public class WebServiceBridge {
 	 * @param p_thread: The ChatThread instance
 	 * @return JSONObject: A JSON object that holds the returned results 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  10/22/2013
 	 */
-	public static JSONObject startChatWithGuest(String p_serverURL, String p_oprtoken, int p_threadid) {
+	public static JSONObject startChatWithGuest(String p_serverURL, String p_oprtoken, int p_threadid)
+			throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "startchat"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
@@ -197,9 +213,12 @@ public class WebServiceBridge {
 	 * @param p_thread: The ChatThread instance
 	 * @return JSONObject: A JSON object that holds the returned results 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  10/22/2013
 	 */
-	public static JSONObject viewThread(String p_serverURL, String p_oprtoken, int p_threadid) {
+	public static JSONObject viewThread(String p_serverURL, String p_oprtoken, int p_threadid)
+			throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "startchat"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
@@ -214,10 +233,12 @@ public class WebServiceBridge {
 	 * @param p_thread: The ChatThread instance
 	 * @return JSONObject: A JSON object that holds the returned results 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  10/22/2013
 	 */
 	public static JSONObject getNewMessagesFromServer(String p_serverURL, String p_oprtoken, 
-			int p_threadid, int p_chattoken) {
+			int p_threadid, int p_chattoken) throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "newmessages"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
@@ -232,10 +253,12 @@ public class WebServiceBridge {
 	 * @param p_message: The message to be sent
 	 * @return JSONObject: A JSON object that holds the returned results 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  10/24/2013
 	 */
 	public static JSONObject sendMessage(String p_serverURL, String p_oprtoken, int p_threadid,
-			int p_chattoken, int p_messageid, String p_message) {
+			int p_chattoken, int p_messageid, String p_message) throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "postmessage"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
@@ -254,14 +277,37 @@ public class WebServiceBridge {
 	 * @param p_messageIDs: The comma-separated list of message ids
 	 * @return JSONObject: A JSON object that holds the returned results 
 	 * 
+	 * @throws MibewMobException 
+	 * 
 	 * @author ENsoesie  11/6/2013
 	 */
 	public static JSONObject acknowledgeMessages(String p_serverURL, String p_oprtoken,
-			String p_messageIDs) {
+			String p_messageIDs) throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "ack-messages"));
 		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
 		queryList.add(new BasicNameValuePair("messageids", p_messageIDs));
+
+		return runQuery(p_serverURL, queryList);
+	}
+
+
+	/**
+	 * @param p_serverURL: The server URL
+	 * @param p_oprtoken: The operator token
+	 * @param p_threadID: The id of the thread to close
+	 * @return JSONObject: A JSON object that holds the returned results 
+	 * 
+	 * @throws MibewMobException 
+	 * 
+	 * @author ENsoesie  11/13/2013
+	 */
+	public static JSONObject closeThread(String p_serverURL, String p_oprtoken,
+			int p_threadID) throws MibewMobException {
+		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
+		queryList.add(new BasicNameValuePair("cmd", "closethread"));
+		queryList.add(new BasicNameValuePair("oprtoken", p_oprtoken));
+		queryList.add(new BasicNameValuePair("threadid", Integer.toString(p_threadID)));
 
 		return runQuery(p_serverURL, queryList);
 	}

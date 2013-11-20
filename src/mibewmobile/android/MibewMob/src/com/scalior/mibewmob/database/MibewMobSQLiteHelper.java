@@ -348,6 +348,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			values.put(CHATMESSAGE_OPERATORNAME, p_message.getOperatorName());
 			values.put(CHATMESSAGE_TIMECREATED, p_message.getTimeCreated().getTime());
 			retVal = database.insert(TABLE_CHATMESSAGE, null, values);
+			database.close();
 		}
 		return retVal;
 	}
@@ -406,6 +407,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 					.append("values ").append(sbData);
 			
 			database.execSQL(sbStatement.toString());
+			database.close();
 		}
 		
 		return sanitizedList;
@@ -462,6 +464,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 					sanitizedList.add(message);
 				}
 			}
+			database.close();
 		}
 
 		return sanitizedList;
@@ -488,6 +491,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			values.put(CHATMESSAGE_ID_R, p_message.getMessageID_R());
 			values.put(CHATMESSAGE_TIMECREATED, p_message.getTimeCreated().getTime());
 			database.update(TABLE_CHATMESSAGE, values, selection.toString(), null);
+			database.close();
 		}
 	}
 
@@ -542,6 +546,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			}
 		}
 		cursor.close();
+		database.close();
 		return true;
 	}
 	
@@ -574,8 +579,10 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 						  CHATTHREAD_AGENT_ID +	", " + CHATTHREAD_CHATTING_WITH_GUEST +		// 16
 						  " FROM " + TABLE_CHATTHREAD + " INNER JOIN " + 
 						  TABLE_CHATSERVER + " ON " + TABLE_CHATTHREAD + "." + CHATTHREAD_SERVERID + 
-						  " = " + TABLE_CHATSERVER + "." + CHATSERVER_ID + 
-						  " ORDER BY " + CHATTHREAD_THREADID + " DESC";
+						  " = " + TABLE_CHATSERVER + "." + CHATSERVER_ID + ";"; 
+						  
+						  // The DB can't meaningfully order by STATE. Skip ordering altogether
+						  //" ORDER BY " + CHATTHREAD_THREADID + " DESC";
 		
 		SQLiteDatabase database = getReadableDatabase();
 		Cursor cursor  = database.rawQuery(rawSQL, null);
@@ -598,6 +605,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			}
 		}
 		cursor.close();
+		database.close();
 		return true;
 	}
 
@@ -627,6 +635,8 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			}
 		}
 		
+		cursor.close();
+		database.close();
 		return messages;
 	}
 }

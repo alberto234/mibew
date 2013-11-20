@@ -1,9 +1,5 @@
 package com.scalior.mibewmob.interfaces;
 
-import java.util.List;
-
-import com.scalior.mibewmob.model.ChatThread;
-
 /**
  * Description:
  * 		This interface is to be implemented by anyone who wants to 
@@ -13,5 +9,5 @@ import com.scalior.mibewmob.model.ChatThread;
  * 
  */
 public interface VisitorListListener {
-	public void onUpdateList(final List<ChatThread> p_activeVisitors);
+	public void onListUpdated();
 }

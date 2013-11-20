@@ -125,6 +125,10 @@ public class ChatActivity extends FragmentActivity implements
 			Intent newChatServer = new Intent(this, ServerDetailsActivity.class);
 			startActivityForResult(newChatServer, NEW_CHAT_SERVER);
 			return true;
+		case R.id.action_settings:
+			Intent settings = new Intent(this, SettingsActivity.class);
+			startActivity(settings);
+			return true;
 		default:
 			// Can't sort it out here, let the base class handle it
 			return super.onOptionsItemSelected(item);

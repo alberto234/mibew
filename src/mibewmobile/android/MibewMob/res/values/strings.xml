@@ -36,5 +36,8 @@
     <string name="hello_bubbles">Hello bubbles!</string>
     <string name="action_initiate_chat">Start Chat</string>
     <string name="sendnow">Send Now</string>
-
+    <string name="action_close_chat">Close chat</string>
+	<string name="set">Set</string>
+	<string name="cancel">Cancel</string>
+   
 </resources>

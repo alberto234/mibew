@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
+import android.preference.PreferenceCategory;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.RingtonePreference;
@@ -19,6 +20,8 @@ import android.text.TextUtils;
 import java.util.List;
 
 import com.scalior.mibewmob.R;
+import com.scalior.mibewmob.R.string;
+import com.scalior.mibewmob.R.xml;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings. On
@@ -31,7 +34,7 @@ import com.scalior.mibewmob.R;
  * href="http://developer.android.com/guide/topics/ui/settings.html">Settings
  * API Guide</a> for more information on developing a Settings UI.
  */
-public class SettingsActivity extends PreferenceActivity {
+public class CopyOfSettingsActivity extends PreferenceActivity {
 	/**
 	 * Determines whether to always show the simplified settings UI, where
 	 * settings are presented in a single list. When false, settings are shown
@@ -60,10 +63,28 @@ public class SettingsActivity extends PreferenceActivity {
 		// In the simplified UI, fragments are not used at all and we instead
 		// use the older PreferenceActivity APIs.
 
-		// Add 'availability' preferences.
-		addPreferencesFromResource(R.xml.pref_availability);
+		// Add 'general' preferences.
+		addPreferencesFromResource(R.xml.pref_general);
 
-		// bindPreferenceSummaryToValue(findPreference("example_text"));
+		// Add 'notifications' preferences, and a corresponding header.
+		PreferenceCategory fakeHeader = new PreferenceCategory(this);
+		fakeHeader.setTitle(R.string.pref_header_notifications);
+		getPreferenceScreen().addPreference(fakeHeader);
+		addPreferencesFromResource(R.xml.pref_notification);
+
+		// Add 'data and sync' preferences, and a corresponding header.
+		fakeHeader = new PreferenceCategory(this);
+		fakeHeader.setTitle(R.string.pref_header_data_sync);
+		getPreferenceScreen().addPreference(fakeHeader);
+		addPreferencesFromResource(R.xml.pref_data_sync);
+
+		// Bind the summaries of EditText/List/Dialog/Ringtone preferences to
+		// their values. When their values change, their summaries are updated
+		// to reflect the new value, per the Android Design guidelines.
+		bindPreferenceSummaryToValue(findPreference("example_text"));
+		bindPreferenceSummaryToValue(findPreference("example_list"));
+		bindPreferenceSummaryToValue(findPreference("notifications_new_message_ringtone"));
+		bindPreferenceSummaryToValue(findPreference("sync_frequency"));
 	}
 
 	/** {@inheritDoc} */

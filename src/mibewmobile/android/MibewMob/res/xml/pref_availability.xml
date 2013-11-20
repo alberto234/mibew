@@ -1,0 +1,17 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <!-- Default for "from" time is 9:00am ET. Note that value provided is in UTC -->
+    <com.scalior.mibewmob.preference.TimePreference
+        android:key="available_from"
+        android:summary="@string/pref_description_available_from"
+        android:title="@string/pref_title_available_from"
+        android:defaultValue="50400000" />
+
+    <!-- Default for "from" time is 5:00pm ET. Note that value provided is in UTC -->
+    <com.scalior.mibewmob.preference.TimePreference
+        android:key="available_to"
+        android:summary="@string/pref_description_available_to"
+        android:title="@string/pref_title_available_to"
+        android:defaultValue="79200000" />
+
+</PreferenceScreen>

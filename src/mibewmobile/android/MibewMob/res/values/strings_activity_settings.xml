@@ -4,6 +4,12 @@
 
     <!-- Strings related to Settings -->
 
+    <!-- MibewMob settings -->
+    <string name="pref_description_available_from">When the operator should be online</string>
+    <string name="pref_title_available_from">Available From:</string>
+    <string name="pref_description_available_to">When the operator should be offline</string>
+    <string name="pref_title_available_to">To:</string>
+    	
 
     <!-- Example General settings -->
     <string name="pref_header_general">General</string>

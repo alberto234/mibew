@@ -35,7 +35,7 @@ require_once('functions.php');
 
 // Log every request that comes in.
 $outfile = fopen("requestfile.txt", "a");
-$request = date('Y-d-m  ') . serialize($_REQUEST) . "\r\n";
+$request = date('Y-d-m G:i:s ') . serialize($_REQUEST) . "\r\n";
 fwrite($outfile, $request);
 fclose($outfile);
 
@@ -97,6 +97,14 @@ else if ($_GET['cmd'] == 'postmessage') {
 	$opMsg = $_GET['message'];
 	
 	$out = msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg);
+	$jsonOut = json_encode($out);
+	echo $jsonOut;
+}
+else if ($_GET['cmd'] == 'closethread') {
+	$oprtoken = $_GET['oprtoken'];
+	$threadid = $_GET['threadid'];
+
+	$out = close_thread_mobile($oprtoken, $threadid);
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }

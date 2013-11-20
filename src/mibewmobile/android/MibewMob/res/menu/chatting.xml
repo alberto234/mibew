@@ -10,5 +10,10 @@
         android:id="@+id/action_initiate_chat"
         android:orderInCategory="50"
         android:title="@string/action_initiate_chat"/>
+    <item
+        android:id="@+id/action_close_chat"
+        android:orderInCategory="51"
+        android:title="@string/action_close_chat"
+        android:visible="false"/>
     
 </menu>

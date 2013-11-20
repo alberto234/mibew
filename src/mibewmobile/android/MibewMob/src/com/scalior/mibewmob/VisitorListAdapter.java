@@ -67,7 +67,14 @@ public class VisitorListAdapter extends ArrayAdapter<ChatThread> {
         
         if (visitorItem != null) {
             viewHolder.tvName.setText(visitorItem.getGuestName());
-            viewHolder.tvMessage.setText(visitorItem.getInitialMessage());
+            String state;
+            if (visitorItem.getState() == ChatThread.STATE_CLOSED) {
+            	state = "(Closed: " + visitorItem.getThreadID() + ") ";
+            } else {
+              	state = "(Not closed: " + visitorItem.getThreadID() + ") ";
+            }
+        
+            viewHolder.tvMessage.setText(state + visitorItem.getInitialMessage());
             // viewHolder.tvShortDescription.setText(serverItem.getDescription());
             //ImageTag tag = mImageTagFactory.build(serverItem.getLogoURL(), context);
             //viewHolder.ivLogo.setTag(tag);
