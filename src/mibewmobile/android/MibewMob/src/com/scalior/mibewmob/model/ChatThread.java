@@ -101,6 +101,11 @@ public class ChatThread {
 	}
 	public void setState(int state) {
 		m_state = state;
+		
+		// if we are setting the state to closed, set chatting flag to false
+		if (state == STATE_CLOSED) {
+			m_chattingWithGuest = false;
+		}
 	}
 	public boolean isCanOpen() {
 		return m_canOpen;
@@ -188,7 +193,10 @@ public class ChatThread {
 	}
 
 	public void setChattingWithGuest(boolean chattingWithGuest) {
-		m_chattingWithGuest = chattingWithGuest;
+		// You can only set this if the state is not closed
+		if (m_state != STATE_CLOSED) {
+			m_chattingWithGuest = chattingWithGuest;
+		}
 	}
 
 	public int getAgentID() {
@@ -197,6 +205,21 @@ public class ChatThread {
 
 	public void setAgentID(int agentID) {
 		m_agentID = agentID;
+	}
+	
+	@Override
+	public String toString() {
+		StringBuilder sbuilder = new StringBuilder();
+		sbuilder.append("ThreadID: ")
+				.append(m_threadID)
+				.append(", State: ");
+		if (m_state == STATE_CLOSED) {
+			sbuilder.append("closed");
+		} else {
+			sbuilder.append("not closed");
+		}
+		
+		return sbuilder.toString();
 	}
 	
 	// Comparator for ChatThreads.

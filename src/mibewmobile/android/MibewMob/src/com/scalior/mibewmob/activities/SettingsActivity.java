@@ -18,6 +18,7 @@ import android.text.TextUtils;
 
 import java.util.List;
 
+import com.scalior.mibewmob.ExceptionHandler;
 import com.scalior.mibewmob.R;
 
 /**
@@ -40,6 +41,13 @@ public class SettingsActivity extends PreferenceActivity {
 	 */
 	private static final boolean ALWAYS_SIMPLE_PREFS = false;
 
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		
+		Thread.setDefaultUncaughtExceptionHandler(new ExceptionHandler(this));
+	}
+	
 	@Override
 	protected void onPostCreate(Bundle savedInstanceState) {
 		super.onPostCreate(savedInstanceState);

@@ -67,7 +67,7 @@ public class MessageListAdapter extends ArrayAdapter<ChatMessage> {
         
         if (messageItem != null) {
             viewHolder.tvMessage.setText("("+ messageItem.getOperatorGuid() + ": " +
-            							 messageItem.getThreadID() + ") " + messageItem.getMessage());
+            							 messageItem.getThreadID() + " - " + messageItem.getMessageID() + ") " + messageItem.getMessage());
             if (messageItem.getOperatorGuid() != 0) {
             	// This is a message from an operator
             	// TODO: We have to use a separate color for the current

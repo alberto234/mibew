@@ -35,7 +35,12 @@ require_once('functions.php');
 
 // Log every request that comes in.
 $outfile = fopen("requestfile.txt", "a");
-$request = date('Y-d-m G:i:s ') . serialize($_REQUEST) . "\r\n";
+$request = date('Y-d-m G:i:s {');
+foreach($_REQUEST as $key => $value) {
+	$request .= "$key: $value, ";
+}
+$request .= "END}\r\n";
+
 fwrite($outfile, $request);
 fclose($outfile);
 
@@ -50,8 +55,9 @@ if ($_GET['cmd'] == 'isalive') {
 else if($_GET['cmd'] == 'login') {
 	$username = $_GET['username'];
 	$password = $_GET['password'];
+	$deviceuuid = $_GET['deviceuuid'];
 	
-	$out = mobile_login($username, $password);
+	$out = mobile_login($username, $password, $deviceuuid);
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }

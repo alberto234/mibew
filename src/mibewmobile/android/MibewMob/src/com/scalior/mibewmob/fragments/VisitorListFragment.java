@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.scalior.mibewmob.ChatUtils;
 import com.scalior.mibewmob.MibewMobException;
+import com.scalior.mibewmob.MibewMobLogger;
 import com.scalior.mibewmob.R;
 import com.scalior.mibewmob.VisitorListAdapter;
 import com.scalior.mibewmob.activities.ChattingActivity;
@@ -83,11 +84,11 @@ public class VisitorListFragment extends ListFragment
 			public void run() {
 				try {
 					m_serverUtils.checkForNewVisitors(true);
-					onListUpdated();
 				} catch (MibewMobException e) {
 					// TODO This is not fatal, just log it.
 					e.printStackTrace();
 				}
+				onListUpdated();
 			}
 		});
 		
@@ -133,7 +134,10 @@ public class VisitorListFragment extends ListFragment
 		// copying the temp list to the m_visitorList
 		synchronized(m_visitorListLock) {
 			Intent showChat = new Intent(getActivity(), ChattingActivity.class);
-			m_serverUtils.setThreadToExpand(m_visitorList.get(position));
+			int chatKey = m_serverUtils.setThreadToExpand(m_visitorList.get(position));
+			showChat.putExtra(ChatUtils.CHAT_KEY, chatKey);
+			MibewMobLogger.Log("Chat key for thread " + m_visitorList.get(position).getThreadID() + 
+								" is: " + chatKey);
 			startActivity(showChat);
 		}
 	}
@@ -192,15 +196,15 @@ public class VisitorListFragment extends ListFragment
 	
 	@Override
 	public void onListUpdated() {
-		synchronized(m_visitorListLock) {
-			m_visitorList.clear();
-			m_visitorList.addAll(m_serverUtils.getVisitorList());
-		}
-
 		getActivity().runOnUiThread(new Runnable() {
 
 			@Override
 			public void run() {
+				synchronized(m_visitorListLock) {
+					m_visitorList.clear();
+					m_visitorList.addAll(m_serverUtils.getVisitorList());
+				}
+
 				m_visitorListAdapter.notifyDataSetChanged();
 				showList();
 			}

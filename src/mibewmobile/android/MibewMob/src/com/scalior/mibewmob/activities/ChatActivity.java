@@ -22,7 +22,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class ChatActivity extends FragmentActivity implements
 		ActionBar.TabListener {
@@ -42,8 +41,11 @@ public class ChatActivity extends FragmentActivity implements
 	 */
 	ViewPager mViewPager;
 
-	private final static int NEW_CHAT_SERVER = 1;
 	
+	public static final String SHOW_VISITOR_LIST	= "showlist"; 
+
+	private static final int NEW_CHAT_SERVER 		= 1;
+	private static final int VISITOR_LIST_IDX 		= 0;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +90,11 @@ public class ChatActivity extends FragmentActivity implements
 			actionBar.addTab(actionBar.newTab()
 					.setText(mSectionsPagerAdapter.getPageTitle(i))
 					.setTabListener(this));
+		}
+		
+		// Force the visitor list to display if it is set
+		if (getIntent().getBooleanExtra(SHOW_VISITOR_LIST, false)) {
+			actionBar.setSelectedNavigationItem(VISITOR_LIST_IDX);
 		}
 	}
 

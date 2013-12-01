@@ -75,6 +75,7 @@ public class WebServiceBridge {
 		}
 		
 		AndroidHttpClient httpClient = AndroidHttpClient.newInstance("MibewMob");
+		String result = null;
 		try {
 			HttpGet request = new HttpGet(requestURI);
 			request.setHeader("Content-type", "application/json");
@@ -83,7 +84,6 @@ public class WebServiceBridge {
 			HttpEntity entity = response.getEntity();
 
 			InputStream inputStream = null;
-			String result = null;
 	
 			inputStream = entity.getContent();
 		    
@@ -101,11 +101,11 @@ public class WebServiceBridge {
 		    jRetVal = new JSONObject(result);
 		    
 		} catch (IOException e) {
-			MibewMobLogger.Log("IO Error reaching server " + serverURL + "\n" + e.getMessage());
+			// MibewMobLogger.Log("IO Error reaching server " + serverURL + "\n" + e.getMessage());
 			throw new MMIOException("IO Error reaching server " + serverURL, e);
 		} catch (JSONException e) {
-			e.printStackTrace();
-			jRetVal = null;
+			throw new RuntimeException("Failed to convert response to JSON: \nResponse: " + result +
+									   "\nDetails: " + e.getMessage(), e);
 		} finally {
 			httpClient.close();
 		}
@@ -157,13 +157,16 @@ public class WebServiceBridge {
 	 * @throws MibewMobException 
 	 * 
 	 * @author ENsoesie  10/19/2013
+	 * @param p_dbCreationUUID 
 	 */
-	public static JSONObject loginOperator(String p_serverURL, String p_username, String p_password) 
+	public static JSONObject loginOperator(String p_serverURL, String p_username, String p_password, 
+								String p_dbCreationUUID) 
 			throws MibewMobException {
 		List<NameValuePair> queryList = new ArrayList<NameValuePair>();
 		queryList.add(new BasicNameValuePair("cmd", "login"));
 		queryList.add(new BasicNameValuePair("username", p_username));
 		queryList.add(new BasicNameValuePair("password", p_password));
+		queryList.add(new BasicNameValuePair("deviceuuid", p_dbCreationUUID));
 
 		return runQuery(p_serverURL, queryList);
 	}

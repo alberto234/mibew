@@ -8,6 +8,7 @@ import java.util.List;
 import com.scalior.mibewmob.ChatUtils;
 import com.scalior.mibewmob.MessageListAdapter;
 import com.scalior.mibewmob.MibewMobException;
+import com.scalior.mibewmob.MibewMobLogger;
 import com.scalior.mibewmob.R;
 import com.scalior.mibewmob.interfaces.ChatThreadListener;
 import com.scalior.mibewmob.model.ChatMessage;
@@ -42,6 +43,8 @@ public class ChattingActivity extends ListActivity
 	private List<ChatMessage> m_messageList;
 	private MessageHandler m_handler;
 	private MessageListAdapter m_listAdapter;
+	private boolean m_bSubscribed;
+	private int m_operatorID_R;
 	
 	// Views to keep track off
 	private MenuItem m_initiateChatMI;
@@ -120,9 +123,20 @@ public class ChattingActivity extends ListActivity
 		});
 			
 		// Extract the thread of interest
-		m_chatThread = m_serverUtils.getThreadToExpand();
-		m_serverUtils.setThreadToExpand(null);
-
+		if (getIntent().getExtras().containsKey(ChatUtils.CHAT_KEY)) {
+			m_chatThread = m_serverUtils.getThreadToExpand(
+					getIntent().getExtras().getInt(ChatUtils.CHAT_KEY));
+		}
+		
+		if (m_chatThread == null) {
+			// TODO Throw exception.
+			MibewMobLogger.Log("Chat key " + getIntent().getExtras().getInt(ChatUtils.CHAT_KEY) + 
+								" failed to return valid chat thread!");
+		}
+		
+		m_operatorID_R = m_serverUtils.getSiteWithID(m_chatThread.getServerID())
+							.getOperator().getOperatorID_R();
+		
 		m_messageList = m_serverUtils.getMessages(m_chatThread.getID());
 		if (m_messageList == null) {
 			m_messageList = new ArrayList<ChatMessage>();
@@ -134,8 +148,8 @@ public class ChattingActivity extends ListActivity
 		setListAdapter(m_listAdapter);
 
 		doBindService();
-		
-		if (!m_chatThread.isChattingWithGuest()) {
+	
+		if (!m_chatThread.isChattingWithGuest() || m_chatThread.getState() == ChatThread.STATE_CLOSED) {
 			m_messageBox.setFocusable(false);
 			m_messageBox.setFocusableInTouchMode(false);
 			
@@ -146,6 +160,7 @@ public class ChattingActivity extends ListActivity
 			}
 		}
 
+		m_bSubscribed = false;
 		if (!m_chatThread.isViewed()) {
 			viewThread();
 		} else {
@@ -171,7 +186,10 @@ public class ChattingActivity extends ListActivity
 		m_initiateChatMI = menu.findItem(R.id.action_initiate_chat);
 		m_closeChatMI = menu.findItem(R.id.action_close_chat);
 		
-		if (m_chatThread.isChattingWithGuest()) {
+		// By default, initiate is visible and close is hidden
+		if (m_chatThread.getState() == ChatThread.STATE_CLOSED) {
+			m_initiateChatMI.setVisible(false);
+		} else if (m_chatThread.isChattingWithGuest()) {
 			m_initiateChatMI.setVisible(false);
 			m_closeChatMI.setVisible(true);
 		}
@@ -214,7 +232,7 @@ public class ChattingActivity extends ListActivity
 						msg = m_handler.obtainMessage(COMMAND_STARTCHAT, ChatUtils.SERVER_ERROR_SUCCESS, 0);
 					} catch (MibewMobException e) {
 						// TODO: Add entry to log file
-						msg = m_handler.obtainMessage(COMMAND_STARTCHAT, ChatUtils.SERVER_ERROR_UNKNOWN, 0);
+						msg = m_handler.obtainMessage(COMMAND_STARTCHAT, e.getErrorCode(), 0);
 					}
 					m_handler.sendMessage(msg);
 				}
@@ -293,9 +311,6 @@ public class ChattingActivity extends ListActivity
 							ChatUtils.SERVER_ERROR_UNKNOWN, 0);
 				}
 				m_handler.sendMessage(msg);
-				
-				// Now that we queried the initial set of messages, subscribe to the new messages event
-				m_pollingServiceBinder.subscribeToNewMessages(m_chatThread, ChattingActivity.this);
 			}
 		});
 		
@@ -306,7 +321,8 @@ public class ChattingActivity extends ListActivity
 		// Add the message to the message list first
 		final ChatMessage chatMessage = new ChatMessage(m_chatThread.getID(),
 				m_messageBox.getText().toString(),
-				0, 0, null, null);
+				ChatMessage.TYPE_AGENT, 
+				m_operatorID_R, null, null);
 		m_messageList.add(chatMessage);
 		m_messageBox.setText("");
 		m_messageBox.requestFocus();
@@ -365,6 +381,7 @@ public class ChattingActivity extends ListActivity
 	private void doUnbindService() {
 		if (m_isBound) {
 			m_pollingServiceBinder.unsubscribeFromNewMessages(m_chatThread, this);
+			m_bSubscribed = false;
 			getApplicationContext().unbindService(m_connection);
 			m_isBound = false;
 		}
@@ -392,8 +409,10 @@ public class ChattingActivity extends ListActivity
 					m_activity.get().m_messageBox.setFocusable(true);
 					m_activity.get().m_messageBox.setFocusableInTouchMode(true);
 					m_activity.get().m_messageBox.setHint(null);
-				}
-				else {
+				} else if (msg.arg1 == ChatUtils.SERVER_ERROR_THREAD_CLOSED) {
+					Toast.makeText(m_activity.get(), "Thread already closed", Toast.LENGTH_SHORT).show();
+					m_activity.get().m_messageBox.setHint("Closed session. View messages only");
+				} else {
 					Toast.makeText(m_activity.get(), "Failed to start the chat. Try again", Toast.LENGTH_SHORT).show();
 					// Switch from the animation to the start chat icon
 					m_activity.get().m_initiateChatMI.setEnabled(true);
@@ -405,6 +424,12 @@ public class ChattingActivity extends ListActivity
 				}
 			}
 			else if (msg.what == COMMAND_NEWMESSAGES) {
+				if (!m_activity.get().m_bSubscribed) {
+					// Now that we queried the initial set of messages, subscribe to the new messages event
+					m_activity.get().m_pollingServiceBinder.subscribeToNewMessages(
+							m_activity.get().m_chatThread, m_activity.get());
+					m_activity.get().m_bSubscribed = true;
+				}
 				// arg2 is the number of new messages added
 				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
 					if (msg.arg2 > 0) {
@@ -423,6 +448,10 @@ public class ChattingActivity extends ListActivity
 			else if (msg.what == COMMAND_CLOSECHAT) {
 				if (msg.arg1 == ChatUtils.SERVER_ERROR_SUCCESS) {
 					m_activity.get().m_initiateChatMI.setVisible(false);
+					m_activity.get().m_messageBox.setText("");
+					m_activity.get().m_messageBox.setFocusable(false);
+					m_activity.get().m_messageBox.setFocusableInTouchMode(false);
+					m_activity.get().m_messageBox.setHint("Closed session. View messages only");
 				}
 				else {
 					Toast.makeText(m_activity.get(), "Failed to close the chat. Try again later", Toast.LENGTH_SHORT).show();

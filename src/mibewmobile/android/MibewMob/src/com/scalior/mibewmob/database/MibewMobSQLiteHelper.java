@@ -3,6 +3,7 @@ package com.scalior.mibewmob.database;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.scalior.mibewmob.model.ChatMessage;
 import com.scalior.mibewmob.model.ChatOperator;
@@ -20,9 +21,18 @@ import android.util.SparseArray;
 public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 	// Database information
 	private static final String DATABASE_NAME = "mibewmob.db";
-	private final static int DATABASE_VERSION = 33;
+	private final static int DATABASE_VERSION = 40;
 	
 	// Tables:
+	//		Database Creation ID: 
+	//			This serves as a unique device id for the client. It is based on the database
+	//			such that the database re-creation represents a new client configuration
+	public static final String TABLE_DBCREATION 			= "dbcreation";
+	public static final String DBCREATION_UUID 				= "uuid";
+	private static final String TABLE_DBCREATION_CREATE 	= "create table " + 
+			TABLE_DBCREATION + " (" +
+			DBCREATION_UUID + " text not null);";
+	
 	//		ChatServer
 	public static final String TABLE_CHATSERVER 			= "chatserver";
 	public static final String CHATSERVER_ID 				= "_id";
@@ -133,10 +143,17 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 
 	@Override
 	public void onCreate(SQLiteDatabase database) {
+		database.execSQL(TABLE_DBCREATION_CREATE);
 		database.execSQL(TABLE_CHATSERVER_CREATE);
 		database.execSQL(TABLE_CHATOPERATOR_CREATE);
 		database.execSQL(TABLE_CHATTHREAD_CREATE);
 		database.execSQL(TABLE_CHATMESSAGE_CREATE);
+		
+		// Get the unique database creation id.
+		// This id should factor in the device id.
+		ContentValues values = new ContentValues();
+		values.put(DBCREATION_UUID, UUID.randomUUID().toString());
+		database.insert(TABLE_DBCREATION, null, values);
 	}
 
 	@Override
@@ -154,6 +171,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 		//}
 		
 		// Let's temporarily drop everything and recreate the database
+		database.execSQL("DROP TABLE IF EXISTS " + TABLE_DBCREATION);
 		database.execSQL("DROP TABLE IF EXISTS " + TABLE_CHATSERVER);
 		database.execSQL("DROP TABLE IF EXISTS " + TABLE_CHATOPERATOR);
 		database.execSQL("DROP TABLE IF EXISTS " + TABLE_CHATTHREAD);
@@ -614,7 +632,8 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 		
 		String rawSQL = "SELECT " + CHATMESSAGE_MESSAGE + ", " +
 				CHATMESSAGE_TYPE + ", " + CHATMESSAGE_OPERATORID_R + ", " + 
-				CHATMESSAGE_OPERATORNAME + ", " + CHATMESSAGE_TIMECREATED + 
+				CHATMESSAGE_OPERATORNAME + ", " + CHATMESSAGE_TIMECREATED + ", " +
+				CHATMESSAGE_ID +
 				  " FROM " + TABLE_CHATMESSAGE + 
 				  " WHERE " + CHATMESSAGE_THREADID + " = " + p_threadID;
 
@@ -627,10 +646,12 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			messages = new ArrayList<ChatMessage>();
 			
 			while (!cursor.isAfterLast()) {
-				messages.add(new ChatMessage(p_threadID, cursor.getString(0),
+				ChatMessage tempMessage = new ChatMessage(p_threadID, cursor.getString(0),
 						cursor.getInt(1), cursor.getInt(2), cursor.getString(3),
-						new Timestamp(cursor.getInt(4))));
+						new Timestamp(cursor.getInt(4)));
+				tempMessage.setMessageID(cursor.getLong(5));
 				
+				messages.add(tempMessage);
 				cursor.moveToNext();
 			}
 		}
@@ -638,5 +659,21 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 		cursor.close();
 		database.close();
 		return messages;
+	}
+
+	public String getDBUUID() {
+		String[] columns = {DBCREATION_UUID};
+
+		SQLiteDatabase database = getReadableDatabase();
+		Cursor cursor  = database.query(TABLE_DBCREATION,
+										columns, 
+										null,
+										null, null, null, null);
+		cursor.moveToFirst();
+		String uuid = cursor.getString(0);
+		cursor.close();
+		database.close();
+		
+		return uuid;
 	}
 }

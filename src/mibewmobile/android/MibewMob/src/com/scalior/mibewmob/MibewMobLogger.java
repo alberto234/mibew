@@ -3,6 +3,8 @@ package com.scalior.mibewmob;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
@@ -40,7 +42,7 @@ public class MibewMobLogger {
 		try {
 			String timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s.S", Locale.US).format(Calendar.getInstance().getTime());
 			String logLine = timestamp + 
-					"Thread: " + Thread.currentThread().getId() + 
+					"\tThread: " + Thread.currentThread().getId() + 
 					" -- " + p_text;
 			
 			BufferedWriter logWriter = getInstance().getWriter();
@@ -61,5 +63,14 @@ public class MibewMobLogger {
 
 	public static void setContext(Context context) {
 		m_sContext = context;
+	}
+
+
+	public static void Log(String p_message, Throwable p_exception) {
+		StringWriter stringWriter = new StringWriter();
+		stringWriter.write(p_message + "\n");
+		p_exception.printStackTrace(new PrintWriter(stringWriter));
+		
+		Log(stringWriter.toString());
 	}
 }

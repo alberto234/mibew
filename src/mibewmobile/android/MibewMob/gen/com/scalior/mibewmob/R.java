@@ -76,32 +76,34 @@ public final class R {
     public static final class layout {
         public static final int activity_chat=0x7f030000;
         public static final int activity_chatting=0x7f030001;
-        public static final int activity_operator_login=0x7f030002;
-        public static final int activity_server_details=0x7f030003;
-        public static final int chatbubbleitem=0x7f030004;
-        public static final int copyofactivity_server_details=0x7f030005;
-        public static final int fragment_chat_dummy=0x7f030006;
-        public static final int fragment_chatserverlist=0x7f030007;
-        public static final int fragment_confirmdetails=0x7f030008;
-        public static final int fragment_serverdetails=0x7f030009;
-        public static final int fragment_validateserver=0x7f03000a;
-        public static final int fragment_visitorlist=0x7f03000b;
-        public static final int serverlistitem=0x7f03000c;
-        public static final int visitorlistitem=0x7f03000d;
+        public static final int activity_crash=0x7f030002;
+        public static final int activity_operator_login=0x7f030003;
+        public static final int activity_server_details=0x7f030004;
+        public static final int chatbubbleitem=0x7f030005;
+        public static final int copyofactivity_server_details=0x7f030006;
+        public static final int fragment_chat_dummy=0x7f030007;
+        public static final int fragment_chatserverlist=0x7f030008;
+        public static final int fragment_confirmdetails=0x7f030009;
+        public static final int fragment_serverdetails=0x7f03000a;
+        public static final int fragment_validateserver=0x7f03000b;
+        public static final int fragment_visitorlist=0x7f03000c;
+        public static final int serverlistitem=0x7f03000d;
+        public static final int visitorlistitem=0x7f03000e;
     }
     public static final class menu {
         public static final int chat=0x7f090000;
         public static final int chatting=0x7f090001;
-        public static final int operator_login=0x7f090002;
-        public static final int server_details=0x7f090003;
+        public static final int crash=0x7f090002;
+        public static final int operator_login=0x7f090003;
+        public static final int server_details=0x7f090004;
     }
     public static final class string {
         public static final int action_close_chat=0x7f060023;
-        public static final int action_forgot_password=0x7f06002a;
+        public static final int action_forgot_password=0x7f06002c;
         public static final int action_initiate_chat=0x7f060021;
         public static final int action_settings=0x7f060001;
-        public static final int action_sign_in_register=0x7f060028;
-        public static final int action_sign_in_short=0x7f060029;
+        public static final int action_sign_in_register=0x7f06002a;
+        public static final int action_sign_in_short=0x7f06002b;
         public static final int app_name=0x7f060000;
         public static final int back=0x7f060011;
         public static final int cancel=0x7f060025;
@@ -113,51 +115,51 @@ public final class R {
         public static final int chat_service_stopped=0x7f06001b;
         public static final int confirm=0x7f060010;
         public static final int confirm_details=0x7f06000f;
-        public static final int error_field_required=0x7f06002f;
-        public static final int error_incorrect_password=0x7f06002e;
-        public static final int error_invalid_email=0x7f06002c;
-        public static final int error_invalid_password=0x7f06002d;
+        public static final int error_field_required=0x7f060031;
+        public static final int error_incorrect_password=0x7f060030;
+        public static final int error_invalid_email=0x7f06002e;
+        public static final int error_invalid_password=0x7f06002f;
         public static final int guest_name=0x7f06001c;
         public static final int hello_bubbles=0x7f060020;
         public static final int hello_world=0x7f060006;
         public static final int intitial_message=0x7f06001d;
         public static final int login=0x7f060016;
-        public static final int login_progress_signing_in=0x7f06002b;
+        public static final int login_progress_signing_in=0x7f06002d;
         public static final int logo_description=0x7f06000e;
         public static final int new_server=0x7f06000b;
         public static final int no_server=0x7f06000a;
         public static final int no_visitors=0x7f06001e;
         public static final int operator_info=0x7f060018;
-        public static final int pref_default_display_name=0x7f060039;
+        public static final int pref_default_display_name=0x7f06003b;
         /**  Strings related to Settings 
  MibewMob settings 
          */
-        public static final int pref_description_available_from=0x7f060031;
-        public static final int pref_description_available_to=0x7f060033;
-        public static final int pref_description_social_recommendations=0x7f060037;
+        public static final int pref_description_available_from=0x7f060033;
+        public static final int pref_description_available_to=0x7f060035;
+        public static final int pref_description_social_recommendations=0x7f060039;
         /**  Example settings for Data & Sync 
          */
-        public static final int pref_header_data_sync=0x7f06003b;
+        public static final int pref_header_data_sync=0x7f06003d;
         /**  Example General settings 
          */
-        public static final int pref_header_general=0x7f060035;
+        public static final int pref_header_general=0x7f060037;
         /**  Example settings for Notifications 
          */
-        public static final int pref_header_notifications=0x7f06003e;
-        public static final int pref_ringtone_silent=0x7f060041;
-        public static final int pref_title_add_friends_to_messages=0x7f06003a;
-        public static final int pref_title_available_from=0x7f060032;
-        public static final int pref_title_available_to=0x7f060034;
-        public static final int pref_title_display_name=0x7f060038;
-        public static final int pref_title_new_message_notifications=0x7f06003f;
-        public static final int pref_title_ringtone=0x7f060040;
-        public static final int pref_title_social_recommendations=0x7f060036;
-        public static final int pref_title_sync_frequency=0x7f06003c;
-        public static final int pref_title_system_sync_settings=0x7f06003d;
-        public static final int pref_title_vibrate=0x7f060042;
+        public static final int pref_header_notifications=0x7f060040;
+        public static final int pref_ringtone_silent=0x7f060043;
+        public static final int pref_title_add_friends_to_messages=0x7f06003c;
+        public static final int pref_title_available_from=0x7f060034;
+        public static final int pref_title_available_to=0x7f060036;
+        public static final int pref_title_display_name=0x7f06003a;
+        public static final int pref_title_new_message_notifications=0x7f060041;
+        public static final int pref_title_ringtone=0x7f060042;
+        public static final int pref_title_social_recommendations=0x7f060038;
+        public static final int pref_title_sync_frequency=0x7f06003e;
+        public static final int pref_title_system_sync_settings=0x7f06003f;
+        public static final int pref_title_vibrate=0x7f060044;
         /**  Strings related to login 
          */
-        public static final int prompt_email=0x7f060027;
+        public static final int prompt_email=0x7f060029;
         public static final int prompt_password=0x7f060014;
         public static final int prompt_username=0x7f060013;
         public static final int sampleChatServerURL=0x7f060008;
@@ -167,12 +169,14 @@ public final class R {
         public static final int server_info=0x7f060017;
         public static final int set=0x7f060024;
         public static final int title_activity_chatting=0x7f06001f;
-        public static final int title_activity_operator_login=0x7f060026;
+        public static final int title_activity_crash=0x7f060027;
+        public static final int title_activity_operator_login=0x7f060028;
         public static final int title_activity_server_details=0x7f060005;
-        public static final int title_activity_settings=0x7f060030;
+        public static final int title_activity_settings=0x7f060032;
         public static final int title_chat_history=0x7f060002;
         public static final int title_chat_servers=0x7f060003;
         public static final int title_user_identities=0x7f060004;
+        public static final int unhandled_exception=0x7f060026;
         public static final int validate=0x7f060009;
     }
     public static final class style {
