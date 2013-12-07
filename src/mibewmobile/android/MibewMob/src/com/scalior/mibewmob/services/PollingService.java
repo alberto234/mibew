@@ -31,6 +31,7 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
@@ -54,6 +55,7 @@ public class PollingService extends Service
 	private boolean m_bPollForNewMessages;
 	private boolean m_bPollingLoop;
 	private static final Object m_pollingLock = new Object();
+	private PowerManager.WakeLock m_wakeLock;
 	
 	private ChatUtils m_serverUtils;
 
@@ -109,6 +111,9 @@ public class PollingService extends Service
 		// Set the current chat availability state and 
 		// register a broadcast receiver for chat availability triggers
 		updatePollingState();
+		
+		PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
+		m_wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PollingService");
 		
 		MibewMobLogger.Log("Service started");
 	}

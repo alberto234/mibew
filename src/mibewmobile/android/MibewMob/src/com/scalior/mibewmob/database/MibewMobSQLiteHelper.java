@@ -21,7 +21,7 @@ import android.util.SparseArray;
 public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 	// Database information
 	private static final String DATABASE_NAME = "mibewmob.db";
-	private final static int DATABASE_VERSION = 40;
+	private final static int DATABASE_VERSION = 41;
 	
 	// Tables:
 	//		Database Creation ID: 

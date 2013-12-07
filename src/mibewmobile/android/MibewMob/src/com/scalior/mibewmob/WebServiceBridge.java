@@ -2,21 +2,22 @@ package com.scalior.mibewmob;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
+//import org.apache.http.HttpEntity;
+//import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.methods.HttpGet;
+//import org.apache.http.client.methods.HttpGet;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.net.http.AndroidHttpClient;
+//import android.net.http.AndroidHttpClient;
 
 /**
  * Description:
@@ -73,8 +74,39 @@ public class WebServiceBridge {
 				}
 			}
 		}
-		
-		AndroidHttpClient httpClient = AndroidHttpClient.newInstance("MibewMob");
+
+		HttpURLConnection connection = null;
+		String result = null;
+		try {
+			URL url = new URL(requestURI);
+			connection = (HttpURLConnection)url.openConnection();
+			connection.setRequestProperty("Content-type", "application/json");
+			connection.setRequestProperty("charset", "utf-8");
+			
+			// JSON is UTF-8 by default
+		    BufferedReader reader = new BufferedReader(
+		    		new InputStreamReader(connection.getInputStream(), "UTF-8"), 8);
+		    StringBuilder sb = new StringBuilder();
+
+		    String line = null;
+		    while ((line = reader.readLine()) != null)
+		    {
+		        sb.append(line + "\n");
+		    }
+		    result = sb.toString();
+		    jRetVal = new JSONObject(result);
+		    
+		} catch (IOException e) {
+			// MibewMobLogger.Log("IO Error reaching server " + serverURL + "\n" + e.getMessage());
+			throw new MMIOException("IO Error reaching server " + serverURL, e);
+		} catch (JSONException e) {
+			throw new RuntimeException("Failed to convert response to JSON: \nResponse: " + result +
+									   "\nDetails: " + e.getMessage(), e);
+		} finally {
+			connection.disconnect();
+		}
+
+		/*AndroidHttpClient httpClient = AndroidHttpClient.newInstance("MibewMob");
 		String result = null;
 		try {
 			HttpGet request = new HttpGet(requestURI);
@@ -108,7 +140,7 @@ public class WebServiceBridge {
 									   "\nDetails: " + e.getMessage(), e);
 		} finally {
 			httpClient.close();
-		}
+		}*/
 
 		return jRetVal;
 	}
