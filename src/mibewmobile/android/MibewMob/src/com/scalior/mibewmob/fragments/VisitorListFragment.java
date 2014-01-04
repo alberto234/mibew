@@ -83,7 +83,7 @@ public class VisitorListFragment extends ListFragment
 			@Override
 			public void run() {
 				try {
-					m_serverUtils.checkForNewVisitors(true);
+					m_serverUtils.checkForNewVisitors(true, false);
 				} catch (MibewMobException e) {
 					// TODO This is not fatal, just log it.
 					e.printStackTrace();
@@ -113,11 +113,17 @@ public class VisitorListFragment extends ListFragment
 	public void onResume () {
 		super.onResume();
 		showList();
+		if (m_pollingServiceBinder != null) {
+			m_pollingServiceBinder.subscribeToVisitorList(this);
+		}
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
+		if (m_pollingServiceBinder != null) {
+			m_pollingServiceBinder.unsubscribeToVisitorList(this);
+		}
 	}
 
 	@Override
@@ -222,7 +228,6 @@ public class VisitorListFragment extends ListFragment
 	
 	private void doUnbindService() {
 		if (m_isBound) {
-			m_pollingServiceBinder.unsubscribeToVisitorList(this);
 			getActivity().getApplicationContext().unbindService(m_connection);
 			// Toast.makeText(getActivity(), "Service unbound", Toast.LENGTH_SHORT).show();
 			m_isBound = false;

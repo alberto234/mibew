@@ -1,7 +1,10 @@
 package com.scalior.mibewmob.model;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import android.util.SparseArray;
 
 public class ChatOperator {
 	
@@ -14,6 +17,9 @@ public class ChatOperator {
 	private int m_permissions;
 	private long m_serverID;
 	private int m_operatorID_R;
+	private String m_oprNotificationId;
+	private SparseArray<Object> m_activeVisitors;
+	private boolean m_updatedActiveVisitors;
 	
 	// Constructors
 	public ChatOperator(String p_token, int p_operatorID_R, String p_username, String p_localeName, String p_commonName,
@@ -27,7 +33,8 @@ public class ChatOperator {
 		m_email = p_email;
 		m_permissions = p_permissions;
 		m_serverID = 0;
-		
+		m_activeVisitors = new SparseArray<Object>();
+		m_updatedActiveVisitors = false;
 	}
 
 	
@@ -40,6 +47,8 @@ public class ChatOperator {
 			m_commonName = p_jOperator.getString("commonname");
 			m_email = p_jOperator.getString("email");
 			m_permissions = p_jOperator.getInt("permissions");
+			m_activeVisitors = new SparseArray<Object>();
+			m_updatedActiveVisitors = false;
 		} catch (JSONException e) {
 			throw new RuntimeException("Failed to parse the JSON operator details: " +
 							e.getMessage(), e);
@@ -107,5 +116,42 @@ public class ChatOperator {
 
 	public void setOperatorID_R(int operatorID_R) {
 		m_operatorID_R = operatorID_R;
+	}
+
+
+	public String getOprNotificationId() {
+		return m_oprNotificationId;
+	}
+
+
+	public void setOprNotificationId(String oprNotificationId) {
+		m_oprNotificationId = oprNotificationId;
+	}
+
+
+	public void addActiveVisitor(int p_visitorId) {
+		m_activeVisitors.put(p_visitorId, null);
+		m_updatedActiveVisitors = true;
+	}
+
+	public void removeActiveVisitor(int p_visitorId) {
+		m_activeVisitors.remove(p_visitorId);
+		m_updatedActiveVisitors = true;
+	}
+
+	public JSONArray getActiveVisitorsAsJSON() {
+		JSONArray jActiveVisitors = new JSONArray();
+		for (int i = 0; i < m_activeVisitors.size(); i++) {
+			jActiveVisitors.put(m_activeVisitors.keyAt(i));
+		}
+		return jActiveVisitors;
+	}
+	
+	public void resetUpdatedActiveVisitorsFlag() {
+		m_updatedActiveVisitors = false;
+	}
+	
+	public boolean isUpdatedActiveVisitors() {
+		return m_updatedActiveVisitors;
 	}
 }

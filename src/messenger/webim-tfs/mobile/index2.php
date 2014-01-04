@@ -35,15 +35,9 @@ require_once('functions.php');
 
 // Log every request that comes in.
 $outfile = fopen("requestfile.txt", "a");
-$request = date('Y-d-m G:i:s {');
-foreach($_REQUEST as $key => $value) {
-	$request .= "$key: $value, ";
-}
-$request .= "END}\r\n";
-
+$request = date('Y-d-m G:i:s ') . serialize($_REQUEST) . "\r\n";
 fwrite($outfile, $request);
 fclose($outfile);
-
 
 header("Content-Type: application/json");
 
@@ -56,9 +50,8 @@ if ($_GET['cmd'] == 'isalive') {
 else if($_GET['cmd'] == 'login') {
 	$username = $_GET['username'];
 	$password = $_GET['password'];
-	$deviceuuid = $_GET['deviceuuid'];
 	
-	$out = mobile_login($username, $password, $deviceuuid);
+	$out = mobile_login($username, $password);
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }
@@ -67,15 +60,6 @@ else if ($_GET['cmd'] == 'visitorlist') {
 	$deviceVisitors = $_GET['activevisitors'];
 	
 	$out = get_active_visitors($oprtoken, $deviceVisitors);
-
-	$jsonOut = json_encode($out);
-	echo $jsonOut;
-}
-else if ($_GET['cmd'] == 'visitornotification') {
-	$oprtoken = $_GET['oprtoken'];
-	$deviceVisitors = $_GET['activevisitors'];
-	
-	$out = get_active_visitors_notification($oprtoken, $deviceVisitors);
 
 	$jsonOut = json_encode($out);
 	echo $jsonOut;

@@ -41,5 +41,6 @@
     <string name="cancel">Cancel</string>
     <string name="unhandled_exception">An unknown error has occurred. The error has been logged.</string>
     <string name="title_activity_crash">CrashActivity</string>
+    <string name="gcm_intent_service">Google Cloud Messaging Intent Service</string>
 
 </resources>

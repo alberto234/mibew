@@ -12,7 +12,13 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE"/>
+    <permission android:name="com.scalior.mibewmob.permission.C2D_MESSAGE"
+		android:protectionLevel="signature"></permission>
 
+    <uses-permission android:name="com.scalior.mibewmob.permission.C2D_MESSAGE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+ 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -73,6 +79,17 @@
             android:name="com.scalior.mibewmob.CrashActivity"
             android:label="@string/title_activity_crash" >
         </activity>
+        <receiver android:name="com.scalior.mibewmob.GcmBroadcastReceiver" 
+            android:permission="com.google.android.c2dm.permission.SEND">
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                <category android:name="com.scalior.mibewmob" />
+            </intent-filter>
+        </receiver>
+		<meta-data android:name="com.google.android.gms.version"
+           android:value="@integer/google_play_services_version" />
+		<service android:name=".services.GcmIntentService" 
+		    android:label="@string/gcm_intent_service"></service>
     </application>
 
 </manifest>

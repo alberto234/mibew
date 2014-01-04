@@ -21,7 +21,7 @@ import android.util.SparseArray;
 public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 	// Database information
 	private static final String DATABASE_NAME = "mibewmob.db";
-	private final static int DATABASE_VERSION = 41;
+	private final static int DATABASE_VERSION = 42;
 	
 	// Tables:
 	//		Database Creation ID: 
@@ -64,6 +64,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 	public static final String CHATOPERATOR_PERMISSIONS 	= "permissions";
 	public static final String CHATOPERATOR_SERVER_ID	 	= "server_id";
 	public static final String CHATOPERATOR_ID_R	 		= "operatorid_r";
+	public static final String CHATOPERATOR_NOTIFICATION_ID	= "notification_id";
 	private static final String TABLE_CHATOPERATOR_CREATE 	= "create table " + 
 			TABLE_CHATOPERATOR + " (" +
 			CHATOPERATOR_ID + " integer primary key autoincrement, " +
@@ -74,7 +75,8 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			CHATOPERATOR_EMAIL + " text, " +
 			CHATOPERATOR_PERMISSIONS + " integer, " +
 			CHATOPERATOR_SERVER_ID + " integer not null, " +
-			CHATOPERATOR_ID_R + " integer not null);";
+			CHATOPERATOR_ID_R + " integer not null, " +
+			CHATOPERATOR_NOTIFICATION_ID + " text);";
 
 	
 	//		ChatThread
@@ -221,6 +223,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			}
 
 			cursor.close();
+			database.close();
 		}
 		return retVal;
 	}
@@ -264,10 +267,12 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 				values.put(CHATOPERATOR_EMAIL, p_operator.getEmail());
 				values.put(CHATOPERATOR_PERMISSIONS, p_operator.getPermissions());
 				values.put(CHATOPERATOR_SERVER_ID, p_operator.getServerID());
+				values.put(CHATOPERATOR_NOTIFICATION_ID, p_operator.getOprNotificationId());
 				retVal = database.insert(TABLE_CHATOPERATOR, null, values);
 			}
 			
 			cursor.close();
+			database.close();
 		}
 		return retVal;
 	}
@@ -341,6 +346,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 			}
 			
 			cursor.close();
+			database.close();
 		}
 		return retVal;
 	}
@@ -532,7 +538,7 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 						  CHATSERVER_WEBSERVICEURL + ", " + CHATOPERATOR_TOKEN + ", " +
 						  CHATOPERATOR_LOCALENAME + ", " + CHATOPERATOR_EMAIL + ", " +
 						  CHATOPERATOR_PERMISSIONS + ", " + TABLE_CHATSERVER + "." + CHATSERVER_ID + ", " +
-						  CHATOPERATOR_ID_R +
+						  CHATOPERATOR_ID_R + ", " + CHATOPERATOR_NOTIFICATION_ID +
 						  " FROM " + TABLE_CHATSERVER + " INNER JOIN " + 
 						  TABLE_CHATOPERATOR + " ON " + TABLE_CHATSERVER + "." + CHATSERVER_ID + 
 						  " = " + TABLE_CHATOPERATOR + "." + CHATOPERATOR_SERVER_ID;
@@ -558,6 +564,29 @@ public class MibewMobSQLiteHelper extends SQLiteOpenHelper {
 						null,
 						cursor.getString(6),
 						cursor.getInt(7));
+				chatOperator.setOprNotificationId(cursor.getString(10));
+
+				// Get a list of active threads for this server/operator combo.
+				// First, check if this is a duplicate.
+				String[] serverColumns = {CHATTHREAD_THREADID};
+				StringBuilder selection = new StringBuilder(CHATTHREAD_SERVERID);
+				selection.append(" = ").append(chatServer.getID()).append(" AND ")
+					.append(CHATTHREAD_STATE).append(" <> ").append(ChatThread.STATE_CLOSED);
+				
+				Cursor cursor2  = database.query(TABLE_CHATTHREAD,
+												serverColumns, 
+												selection.toString(),
+												null, null, null, null);
+				if (cursor2.getCount() > 0) {
+					cursor2.moveToFirst();
+	
+					while (!cursor2.isAfterLast()) {
+						chatOperator.addActiveVisitor(cursor2.getInt(cursor2.getColumnIndex(CHATTHREAD_THREADID)));
+						cursor2.moveToNext();
+					}
+				}
+				cursor2.close();
+
 
 				p_monitoredSites.add(new MonitoredSite(chatServer, chatOperator));
 				cursor.moveToNext();

@@ -18,6 +18,7 @@ import com.scalior.mibewmob.model.ChatThread;
 import com.scalior.mibewmob.model.MonitoredSite;
 
 import android.content.Context;
+import android.os.PowerManager;
 import android.util.SparseArray;
 
 /* Some constants from the server.
@@ -67,8 +68,7 @@ public class ChatUtils {
 	public static final int SERVER_ERROR_THREAD_CLOSED		= 11;
 
 	// String constants used around
-	public static final String CHAT_KEY 		= "thread_key";
-	
+	public static final String CHAT_KEY 			= "thread_key";
 	
 	private final String m_dbCreationUUID;
 	
@@ -85,6 +85,12 @@ public class ChatUtils {
 	// That said, no UI updates should be done using this context.
 	private Context m_context;
 
+	private boolean m_gcmEnabled; 
+	private String m_gcmRegId;
+	
+	// Application-wide wake lock. This is a reference-counted wake lock
+	private PowerManager.WakeLock m_wakeLock;
+	
 	// For singleton pattern
 	private static ChatUtils m_sInstance = null;
 	private ChatUtils(Context p_context) {
@@ -94,9 +100,15 @@ public class ChatUtils {
 		m_monitoredSitesList = reloadMonitoredSitesList();
 		m_visitorList = reloadArchivedVisitorList();
 		m_dbCreationUUID = getDBUUID();
+		m_gcmEnabled = false;
+		m_gcmRegId = null;
 		
 		// Set the WebServiceBridge's context
 		MibewMobLogger.setContext(m_context);
+
+		// Initialize the wake lock.
+		PowerManager pm = (PowerManager) p_context.getSystemService(Context.POWER_SERVICE);
+		m_wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MibewMob");
 	};
 
 	private String getDBUUID() {
@@ -230,6 +242,10 @@ public class ChatUtils {
 		for (int i = 0; i < m_monitoredSitesList.size(); i++) {
 			m_monitoredSitesMap.put((int) m_monitoredSitesList.get(i).getServer().getID(), m_monitoredSitesList.get(i));
 		}
+		
+		// Post the updated visitor list to the notification server.
+		postUpdatedActiveVisitorList(true);
+		
 		return m_monitoredSitesList;
 	}
 	
@@ -315,7 +331,7 @@ public class ChatUtils {
 		try {
 			JSONObject jActiveVisitors = 
 					WebServiceBridge.getActiveVisitors(p_monitoredSite.getServer().getWebServiceURL(), 
-							p_oprtoken, sbActiveVisitorString.toString());
+							p_oprtoken, p_monitoredSite.getOperator().getActiveVisitorsAsJSON().toString());
 
 			int errorCode = jActiveVisitors.getInt("errorCode");
 
@@ -339,7 +355,11 @@ public class ChatUtils {
 						JSONObject jVisitor = jThreadList.getJSONObject(j);
 						for(ChatThread visitor: activeVisitorList) {
 							if (visitor.getThreadID() == jVisitor.getInt("threadid")) {
-								visitor.setState(jVisitor.getInt("state"));
+								int visitorState = jVisitor.getInt("state");
+								visitor.setState(visitorState);
+								if (visitorState == ChatThread.STATE_CLOSED) {
+									p_monitoredSite.getOperator().removeActiveVisitor(visitor.getThreadID());
+								}
 								if (jVisitor.optInt("shownmessageid") != 0) {
 									visitor.setInitialMessage(jVisitor.getString("message"));
 								}
@@ -361,6 +381,7 @@ public class ChatUtils {
 							visitor.setChattingWithGuest(true);
 						}
 						retVisitorList.add(visitor);
+						p_monitoredSite.getOperator().addActiveVisitor(visitor.getThreadID());
 					}
 				}				
 				return retVisitorList;
@@ -388,7 +409,8 @@ public class ChatUtils {
 	 * 
 	 * @author ENsoesie  11/11/2013
 	 */
-	public synchronized boolean checkForNewVisitors(boolean p_bSaveToDb) throws MibewMobException {
+	public synchronized boolean checkForNewVisitors(boolean p_bSaveToDb,
+			boolean p_bFromGCMNotification) throws MibewMobException {
 		List<ChatThread> visitors = new ArrayList<ChatThread>();
 		List<ChatThread> updatedVisitors = new ArrayList<ChatThread>();
 		
@@ -405,6 +427,15 @@ public class ChatUtils {
 					m_monitoredSitesList.get(i).getOperator().getToken(),
 					updatedVisitors));
 		}
+		
+
+		// Post the updated visitor list to the notification server.
+		// TODO: Consider doing this in a separate thread for increased responsiveness.
+		// Note: If the request to check for new visitors is from the notification server,
+		// 		 then update the visitor list of all operators. This will be fine-tuned when
+		// 		 the notification provides info about the operator that has new visitors.
+		postUpdatedActiveVisitorList(p_bFromGCMNotification);
+
 		
 		if (visitors.size() > 0 || updatedVisitors.size() > 0) {
 			if (p_bSaveToDb) {
@@ -423,6 +454,7 @@ public class ChatUtils {
 			
 			m_visitorList.addAll(visitors);
 			Collections.sort(m_visitorList, new ChatThread.ChatThreadComparatorDesc());
+
 
 			// Return true if there was a change
 			return true;
@@ -744,10 +776,6 @@ public class ChatUtils {
 	}
 	
 
-
-	
-	
-	
 	
 	
 	public MonitoredSite addSiteToMonitor(String p_serverURL, String p_username, String p_password) 
@@ -755,6 +783,22 @@ public class ChatUtils {
 		ChatServer newServer = validateServer(p_serverURL);
 		ChatOperator newOperator = 
 				loginOperator(newServer.getWebServiceURL(), p_username, p_password);
+		
+		// If GCM is enabled, send the registration details to the notification server
+		if (m_gcmEnabled) {
+			try {
+			    JSONObject jRetVal = 
+			    		NotificationWebServiceBridge.register(m_gcmRegId, 
+			    				newOperator.getToken(), newServer.getWebServiceURL());
+				    
+			    newOperator.setOprNotificationId(jRetVal.getString("oprnotificationid"));
+			
+			} catch (JSONException e) {
+				// Failed to register for notifications. This is not fatal. Will try again
+				MibewMobLogger.Log("Failed to register for notifications for server " + newServer.getURL());
+			}
+		}
+		
 		return addNewMonitoredSite(newServer, newOperator);
 	}
 
@@ -784,5 +828,101 @@ public class ChatUtils {
 
 	public String getDbCreationUUID() {
 		return m_dbCreationUUID;
+	}
+	
+	public void saveGCMParameters(boolean p_gcmEnabled, String p_gcmRegId) {
+		m_gcmEnabled = p_gcmEnabled;
+		m_gcmRegId = p_gcmRegId;
+	}
+	
+	/**
+	 * Description:
+	 * 	Post the updated active visitor list to the notification server.
+	 *  This goes through all the monitored sites. 
+	 *
+	 * 
+	 * @author ENsoesie  12/23/2013
+	 */
+	private void postUpdatedActiveVisitorList(final boolean p_bForceAll) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					JSONArray jOprActiveVisitors = new JSONArray();
+					for (int i = 0; i < m_monitoredSitesList.size(); i++) {
+						ChatOperator operator = m_monitoredSitesList.get(i).getOperator();
+						if (p_bForceAll || operator.isUpdatedActiveVisitors()) {
+							JSONObject jActiveVisitors = new JSONObject();
+							jActiveVisitors.put("oprnotificationid", operator.getOprNotificationId());
+							jActiveVisitors.put("activevisitors", operator.getActiveVisitorsAsJSON());
+							jOprActiveVisitors.put(jActiveVisitors);
+						}
+					}
+					if (jOprActiveVisitors.length() > 0) {
+						try {
+							JSONObject jResult = NotificationWebServiceBridge.setActiveVisitors(jOprActiveVisitors);
+							if (jResult.getInt("failed") != 0) {
+								for (int i = 0; i < m_monitoredSitesList.size(); i++) {
+									ChatOperator operator = m_monitoredSitesList.get(i).getOperator();
+									if (p_bForceAll || operator.isUpdatedActiveVisitors()) {
+										operator.resetUpdatedActiveVisitorsFlag();
+									}
+								}
+							}
+						} catch (MibewMobException e) {
+							MibewMobLogger.Log("Failed to post updated active visitor list to notification server", e);
+							e.printStackTrace();
+						}
+					}
+				} catch (JSONException e) {
+					throw new RuntimeException("Failed to parse JSON when sending active visitors to notification server" + 
+									e.getMessage(), e);
+				}
+				
+			}
+			
+		}).start();
+
+	}
+
+
+	/**
+	 * Description:
+	 * 	Post the operator status to the notification server.
+	 *  This goes through all the monitored sites. 
+	 *
+	 * 
+	 * @author ENsoesie  12/23/2013
+	 */
+	public void setNSOperatorStatus(final int p_operatorStatus) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				for (int i = 0; i < m_monitoredSitesList.size(); i++) {
+					ChatOperator operator = m_monitoredSitesList.get(i).getOperator();
+					try {
+						NotificationWebServiceBridge.setOperatorStatus(operator.getOprNotificationId(), p_operatorStatus);
+					} catch (MibewMobException e) {
+						MibewMobLogger.Log("Failed to post operator status to notification server for operator " + 
+								operator.getCommonName(), e);
+						e.printStackTrace();
+					}
+				}
+				
+			}
+			
+		}).start();
+
+	}
+	
+	
+	public void acquireWakeLock() {
+		m_wakeLock.acquire();
+	}
+	
+	public void releaseWakeLock() {
+		m_wakeLock.release();
 	}
 }

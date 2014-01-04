@@ -81,7 +81,7 @@ public class WebServiceBridge {
 			URL url = new URL(requestURI);
 			connection = (HttpURLConnection)url.openConnection();
 			connection.setRequestProperty("Content-type", "application/json");
-			connection.setRequestProperty("charset", "utf-8");
+			connection.setRequestProperty("charset", "UTF-8");
 			
 			// JSON is UTF-8 by default
 		    BufferedReader reader = new BufferedReader(

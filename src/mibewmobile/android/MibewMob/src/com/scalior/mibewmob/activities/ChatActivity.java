@@ -2,6 +2,7 @@ package com.scalior.mibewmob.activities;
 
 import java.util.Locale;
 
+
 import com.scalior.mibewmob.R;
 import com.scalior.mibewmob.fragments.MonitoredSitesListFragment;
 import com.scalior.mibewmob.fragments.VisitorListFragment;
@@ -52,8 +53,12 @@ public class ChatActivity extends FragmentActivity implements
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_chat);
 
+		// Google Cloud messaging is an integral part of this app, so check that this
+		// device supports it.
+		
 		// This is our main activity. Start the chat service here if it wasn't
 		// started on reboot.
+			
 		startService(new Intent(this, PollingService.class));
 		///Toast.makeText(this, "Service started in chatactivity", Toast.LENGTH_LONG).show();
 		
@@ -97,7 +102,8 @@ public class ChatActivity extends FragmentActivity implements
 			actionBar.setSelectedNavigationItem(VISITOR_LIST_IDX);
 		}
 	}
-
+	
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
@@ -142,7 +148,12 @@ public class ChatActivity extends FragmentActivity implements
 		}
 	}
 	
+	@Override
+	protected void onResume() {
+		super.onResume();
+	}
 	
+
 	/**
 	 * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
 	 * one of the sections/tabs/pages.

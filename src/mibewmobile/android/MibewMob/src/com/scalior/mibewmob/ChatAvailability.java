@@ -1,16 +1,14 @@
 package com.scalior.mibewmob;
 
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Locale;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
 public class ChatAvailability {
-	public static final int STATE_AVAILABLE = 1;
-	public static final int STATE_UNAVAILABLE = 2;
+	public static final int STATE_AVAILABLE = 0;
+	public static final int STATE_UNAVAILABLE = 1;
 	
 	// For testing
 	//private static int m_sState = STATE_AVAILABLE;
@@ -35,23 +33,14 @@ public class ChatAvailability {
 		Calendar currTime = Calendar.getInstance();
 		Calendar tempTime = Calendar.getInstance();
 
-		String timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s", Locale.US).format(tempTime.getTime());
 
 		tempTime.setTimeInMillis(prefs.getLong("available_from", 50400000));
-		timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s", Locale.US).format(tempTime.getTime());
 		fromTime.set(Calendar.HOUR_OF_DAY, tempTime.get(Calendar.HOUR_OF_DAY));
 		fromTime.set(Calendar.MINUTE, tempTime.get(Calendar.MINUTE));
 		
-		timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s", Locale.US).format(fromTime.getTime());
-
 		tempTime.setTimeInMillis(prefs.getLong("available_to", 79200000));
-		timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s", Locale.US).format(tempTime.getTime());
 		toTime.set(Calendar.HOUR_OF_DAY, tempTime.get(Calendar.HOUR_OF_DAY));
 		toTime.set(Calendar.MINUTE, tempTime.get(Calendar.MINUTE));
-
-		timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s", Locale.US).format(toTime.getTime());
-
-		timestamp = new SimpleDateFormat("yyyy-MM-dd H:m:s", Locale.US).format(currTime.getTime());
 
 		if (currTime.getTimeInMillis() < fromTime.getTimeInMillis()) {
 			m_state = STATE_UNAVAILABLE;

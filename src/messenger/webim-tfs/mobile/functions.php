@@ -206,15 +206,21 @@ function get_pending_threads($deviceVisitors, $deviceid)
 			 "ORDER BY threadid DESC";
 	$rows = select_multi_assoc($query, $link);
 
-	if (strlen($deviceVisitors) > 0) {
+	/*if (strlen($deviceVisitors) > 0) {
+		json_decode($deviceVisitors);
 		$deviceVisitorArray = explode(",", $deviceVisitors);
+	}*/
+	
+	if (strlen($deviceVisitors) > 0) {
+		$deviceVisitorArray = json_decode($deviceVisitors, true);
+		$deviceVisitorCommaSepList = implode(',', $deviceVisitorArray);
 	}
 	
 	// Query the last status for the threads sent to the device
 	if (count($deviceVisitorArray) > 0) {
 		$query = "select threadid, state, shownmessageid " .
 				 "from ${mysqlprefix}chatsyncedthreads ". 
-				 "where deviceid = $deviceid and threadid in ($deviceVisitors) " .
+				 "where deviceid = $deviceid and threadid in ($deviceVisitorCommaSepList) " .
 				 "order by threadid desc";
 		
 		// SECURITY ALERT: We are using $deviceVisitors as provided in the request. There is a 
@@ -761,4 +767,96 @@ function batch_op_messages($oprtoken, $oprtoken, $opMessages) {
 	$operator = operator_by_id($operatorId);
 	
 	*/
+	
+/**************
+ *	 Method:	
+ *		get_active_visitors_notification
+ * Description:
+ *	  	Returns true if there is a new visitor.
+ *	  	i.e, one that the operator is not yet aware off.
+ * Author:
+ * 		ENsoesie 	9/4/2013	Creation
+ ***********/
+function get_active_visitors_notification($oprtoken, $deviceVisitors) {
+	global $webim_encoding, $settings, $state_closed, $state_left, $mysqlprefix;
+	
+	$oprSession = operator_from_token($oprtoken);
+	$operatorId = $oprSession['operatorid'];
+	$deviceid = $oprSession['deviceid'];
+	
+	$hasVisitorChange = false; // Assume no visitor
+
+	if ($operatorId != NULL) {
+		notify_operator_alive($operatorId, OPR_STATUS_ON);
+
+		$link = connect();
+	
+		$output = array();
+		$query = "select threadid, istate, shownmessageid " .
+				 "from ${mysqlprefix}chatthread where istate <> $state_closed AND istate <> $state_left ";
+		$rows = select_multi_assoc($query, $link);
+
+
+		if (strlen($deviceVisitors) > 0) {
+			$deviceVisitorArray = json_decode($deviceVisitors, true);
+			$deviceVisitorCommaSepList = implode(',', $deviceVisitorArray);
+		}
+		
+		// Query the last status for the threads sent to the device
+		if (count($deviceVisitorArray) > 0) {
+			$query = "select threadid, state, shownmessageid " .
+					 "from ${mysqlprefix}chatsyncedthreads ". 
+					 "where deviceid = $deviceid and threadid in ($deviceVisitorCommaSepList) " .
+					 "order by threadid desc";
+			
+			$syncedthreads = select_multi_assoc($query, $link);		
+		}
+	
+		if (count($rows) > 0) {
+			foreach ($rows as $row) {
+				if ($hasVisitorChange) {
+					break;
+				}
+				if (!isset($deviceVisitorArray) || 
+					($key = array_search($row['threadid'], $deviceVisitorArray)) === false) {
+					// New thread
+					$hasVisitorChange = true;
+				} else {
+					// Thread that is still active on device. Check if anything has changed
+					foreach($syncedthreads as $deviceThread) {
+						if ($deviceThread['threadid'] == $row['threadid']) {
+							if ($deviceThread['state'] != $row['istate'] ||
+								$deviceThread['shownmessageid'] != $row['shownmessageid']) {
+	
+								// Something changed.
+								$hasVisitorChange = true;
+							}
+							
+							// Remove the thread from the array marking it as serviced. If at the end of
+							// this exercise there are threads left in this array, then these are threads
+							// that have been closed.
+							unset($deviceVisitorArray[$key]);
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		// Any unserviced threads need to be closed. on the device
+		if ($deviceVisitorArray != null && count($deviceVisitorArray) > 0) {
+			$hasVisitorChange = true;
+		}
+	
+		mysql_close($link);
+
+		$out = array('errorCode' => ERROR_SUCCESS,
+					 'hasvisitorchange' => $hasVisitorChange);
+	}
+	else {
+		$out = array('errorCode' => ERROR_INVALID_OPR_TOKEN);
+	}
+
+	return $out;
+}
 ?>
