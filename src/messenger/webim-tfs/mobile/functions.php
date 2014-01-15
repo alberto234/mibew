@@ -51,6 +51,27 @@ $threadstate_key = array(
 );
 
 
+function chat_server_status() {
+	global $mysqlprefix, $version, $url;
+	$link = connect();
+	
+	
+	$row = select_one_row("SELECT * FROM ${mysqlprefix}chatmibewmobserverinfo", $link);
+	if ($row != NULL) {
+		return array('name' => $row['servername'],
+					 'URL' => $url,		// TODO: Need to infer this either from the request or during installation
+					 'version' => $version,	// TODO: This is the version as reported by mibew
+					 'logoURL' => $row['logourl'],
+					 'mibewMobVersion' => $row['apiversion'],
+					 'installationid' => $row['installationid'],
+					 'propertyrevision' => (int)$row['propertyrevision'],
+					 'server_status' => 'on',
+					 'errorCode' => ERROR_SUCCESS);
+	} else {
+		return array('errorCode' => ERROR_UNKNOWN);
+	}
+}
+
 function mobile_login($username, $password, $deviceuuid) {
 	if (isset($username) && isset($password)) {
 		// Note: Blank passwords not currently allowed.
@@ -77,16 +98,26 @@ function mobile_login($username, $password, $deviceuuid) {
 	return $out;
 }
 
-function chat_server_status() {
-	global $version, $url, $logoURL, $mibewMobVersion, $serverName;
-	$out = array('name' => $serverName,
-				 'URL' => $url,
-				 'version' => $version,
-				 'logoURL' => $logoURL,
-				 'mibewMobVersion' => $mibewMobVersion,
-				 'server_status' => 'on',
-				 'errorCode' => ERROR_SUCCESS);
-				 
+function mobile_logout($oprtoken) {
+	$oprSession = operator_from_token($oprtoken);
+	$operatorId = $oprSession['operatorid'];
+
+	if ($operatorId == NULL) {
+		return array('errorCode' => ERROR_INVALID_OPR_TOKEN);
+	}
+
+	$operator = operator_by_id($operatorId);
+	
+	global $mysqlprefix;
+	$link = connect();
+	
+	$query = "UPDATE ${mysqlprefix}chatoperatorsession 
+			  SET inprogress = 0, dtmexpires = CURRENT_TIMESTAMP
+			  WHERE oprtoken = '$oprtoken'";
+	
+	perform_query($query, $link);
+	
+	$out = array('errorCode' => ERROR_SUCCESS);
 	return $out;
 }
 
@@ -104,7 +135,7 @@ function create_operator_session($op, $deviceuuid) {
 		// Return the current unexpired token if the user is already logged in.
 		$loggedInOp = select_one_row("SELECT * FROM ${mysqlprefix}chatoperatorsession " . 
 									 "WHERE operatorid = " . $op['operatorid'] . 
-									 " AND deviceid = $deviceid", $link);
+									 " AND deviceid = $deviceid AND inprogress = 1", $link);
 	}
 
 	if ($loggedInOp != NULL) {
