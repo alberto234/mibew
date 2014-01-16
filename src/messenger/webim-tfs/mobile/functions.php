@@ -7,23 +7,23 @@ require_once('../libs/userinfo.php');
 require_once('../libs/groups.php');
 
 // Mobile client error codes
-define(ERROR_SUCCESS,				 0);
-define(ERROR_LOGIN_FAILED,			 1);
-define(ERROR_INVALID_OPR_TOKEN,		 2);
-define(ERROR_INVALID_THREAD,		 3);
-define(ERROR_CANT_TAKEOVER,			 4);
-define(ERROR_CONFIRM_TAKEOVER,		 5);
-define(ERROR_CANT_VIEW_THREAD,		 6);
-define(ERROR_WRONG_THREAD,			 7);
-define(ERROR_INVALID_CHAT_TOKEN,	 8);
-define(ERROR_INVALID_COMMAND,		 9);
-define(ERROR_UNKNOWN,				10);
-define(ERROR_THREAD_CLOSED,			11);
+define('ERROR_SUCCESS',				 0);
+define('ERROR_LOGIN_FAILED',		 1);
+define('ERROR_INVALID_OPR_TOKEN',	 2);
+define('ERROR_INVALID_THREAD',		 3);
+define('ERROR_CANT_TAKEOVER',		 4);
+define('ERROR_CONFIRM_TAKEOVER',	 5);
+define('ERROR_CANT_VIEW_THREAD',	 6);
+define('ERROR_WRONG_THREAD',		 7);
+define('ERROR_INVALID_CHAT_TOKEN',	 8);
+define('ERROR_INVALID_COMMAND',		 9);
+define('ERROR_UNKNOWN',				10);
+define('ERROR_THREAD_CLOSED',		11);
 
 // Operator status codes. From inspection I can see that these are currently
 // implied as 0 for availabe, 1 for away
-define(OPR_STATUS_ON,		 0);
-define(OPR_STATUS_AWAY,		 1);
+define('OPR_STATUS_ON',		 0);
+define('OPR_STATUS_AWAY',	 1);
 
 
 $url = "http://nsoesie.dyndns-home.com:5242/transmawfoods/webim";
@@ -592,6 +592,7 @@ function get_new_messages($oprtoken, $threadid, $chattoken) {
  * 		ENsoesie 	9/7/2013	Creation
  ***********/
 function get_unsynced_messages($threadid, $deviceid) {
+	global $mysqlprefix;
 	$link = connect();
 
 	$query = "select messageid, tmessage, unix_timestamp(dtmcreated) as timestamp, threadid, 

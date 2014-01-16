@@ -34,7 +34,7 @@ require_once('functions.php');
 // C74BEDBF52
 
 // Log every request that comes in.
-/*$outfile = fopen("requestfile.txt", "a");
+$outfile = fopen("requestfile.txt", "a");
 $request = date('Y-d-m G:i:s {');
 foreach($_REQUEST as $key => $value) {
 	$request .= "$key: $value, ";
@@ -42,7 +42,7 @@ foreach($_REQUEST as $key => $value) {
 $request .= "END}\r\n";
 
 fwrite($outfile, $request);
-fclose($outfile);*/
+fclose($outfile);
 
 
 header("Content-Type: application/json");
@@ -139,6 +139,14 @@ else if ($_GET['cmd'] == 'closethread') {
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }*/
+
+// Strictly to get info about the hosting server.
+// Should be commented out for production
+/*else if ($_GET['cmd'] == 'phpinfo') {
+	header("Content-Type: text/html");
+	phpinfo();
+}*/
+
 else
 {
 	$out = invalid_command();
