@@ -72,8 +72,9 @@ else if($_GET['cmd'] == 'logout') {
 else if ($_GET['cmd'] == 'visitorlist') {
 	$oprtoken = $_GET['oprtoken'];
 	$deviceVisitors = $_GET['activevisitors'];
+	$stealthMode = isset($_GET['stealth']);
 	
-	$out = get_active_visitors($oprtoken, $deviceVisitors);
+	$out = get_active_visitors($oprtoken, $deviceVisitors, $stealthMode);
 
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
@@ -81,8 +82,9 @@ else if ($_GET['cmd'] == 'visitorlist') {
 else if ($_GET['cmd'] == 'visitornotification') {
 	$oprtoken = $_GET['oprtoken'];
 	$deviceVisitors = $_GET['activevisitors'];
-	
-	$out = get_active_visitors_notification($oprtoken, $deviceVisitors);
+	$stealthMode = isset($_GET['stealth']);
+
+	$out = get_active_visitors_notification($oprtoken, $deviceVisitors, $stealthMode);
 
 	$jsonOut = json_encode($out);
 	echo $jsonOut;

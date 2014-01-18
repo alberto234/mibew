@@ -176,7 +176,7 @@ function create_operator_session($op, $deviceuuid) {
  * Author:
  * 		ENsoesie 	9/4/2013	Creation
  ***********/
-function get_active_visitors($oprtoken, $deviceVisitors) {
+function get_active_visitors($oprtoken, $deviceVisitors, $stealthMode) {
 	$oprSession = operator_from_token($oprtoken);
 	$operatorId = $oprSession['operatorid'];
 	$deviceid = $oprSession['deviceid'];
@@ -184,7 +184,9 @@ function get_active_visitors($oprtoken, $deviceVisitors) {
 	if ($operatorId != NULL) {
 		$out = get_pending_threads($deviceVisitors, $deviceid);
 		$out['errorCode'] = ERROR_SUCCESS;
-		notify_operator_alive($operatorId, OPR_STATUS_ON);
+		if (!$stealthMode) {
+			notify_operator_alive($operatorId, OPR_STATUS_ON);
+		}
 	}
 	else {
 		$out = array('errorCode' => ERROR_INVALID_OPR_TOKEN);
@@ -807,9 +809,9 @@ function batch_op_messages($oprtoken, $oprtoken, $opMessages) {
  *	  	Returns true if there is a new visitor.
  *	  	i.e, one that the operator is not yet aware off.
  * Author:
- * 		ENsoesie 	9/4/2013	Creation
+ * 		ENsoesie 	12/4/2013	Creation
  ***********/
-function get_active_visitors_notification($oprtoken, $deviceVisitors) {
+function get_active_visitors_notification($oprtoken, $deviceVisitors, $stealthMode) {
 	global $webim_encoding, $settings, $state_closed, $state_left, $mysqlprefix;
 	
 	$oprSession = operator_from_token($oprtoken);
@@ -819,8 +821,10 @@ function get_active_visitors_notification($oprtoken, $deviceVisitors) {
 	$hasVisitorChange = false; // Assume no visitor
 
 	if ($operatorId != NULL) {
-		notify_operator_alive($operatorId, OPR_STATUS_ON);
-
+		if (!$stealthMode) {
+			notify_operator_alive($operatorId, OPR_STATUS_ON);
+		}
+		
 		$link = connect();
 	
 		$output = array();
