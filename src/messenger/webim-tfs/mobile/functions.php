@@ -251,7 +251,7 @@ function get_pending_threads($deviceVisitors, $deviceid)
 	
 	// Query the last status for the threads sent to the device
 	if (count($deviceVisitorArray) > 0) {
-		$query = "select threadid, state, shownmessageid " .
+		$query = "select threadid, state, shownmessageid, agentid " .
 				 "from ${mysqlprefix}chatsyncedthreads ". 
 				 "where deviceid = $deviceid and threadid in ($deviceVisitorCommaSepList) " .
 				 "order by threadid desc";
@@ -278,11 +278,13 @@ function get_pending_threads($deviceVisitors, $deviceid)
 				foreach($syncedthreads as $deviceThread) {
 					if ($deviceThread['threadid'] == $row['threadid']) {
 						if ($deviceThread['state'] != $row['istate'] ||
-							$deviceThread['shownmessageid'] != $row['shownmessageid']) {
+							$deviceThread['shownmessageid'] != $row['shownmessageid'] ||
+							$deviceThread['agentid'] != $row['agentId']) {
 
 							// Something changed. Update only the necessary fields
 							$thread = array('threadid' => $row['threadid'],
-											'state' => $row['istate']);
+											'state' => $row['istate'],
+											'agentid' => $row['agentId']);
 							if ($row['shownmessageid'] != 0) {
 								$thread['message'] = get_sanitized_message($row['shownmessageid']);
 								$thread['shownmessageid'] = $row['shownmessageid'];
@@ -315,11 +317,13 @@ function get_pending_threads($deviceVisitors, $deviceid)
 		$newlink = connect();
 		foreach ($output['threadList'] as $listItem) {
 			$query = "INSERT INTO ${mysqlprefix}chatsyncedthreads " .
-					 "(threadid, deviceid, state, shownmessageid) VALUES (" .
+					 "(threadid, deviceid, state, shownmessageid, agentid) VALUES (" .
 					 $listItem['threadid'] . ", $deviceid, " . $listItem['state'] . ", " .
-					 (isset($listItem['shownmessageid']) ? $listItem['shownmessageid'] : '0') . ") " .
+					 (isset($listItem['shownmessageid']) ? $listItem['shownmessageid'] : '0') . ", " .
+					 (isset($listItem['agentid']) ? $listItem['agentid'] : '0') . ") " .
 					 " ON DUPLICATE KEY UPDATE state = " . $listItem['state'] . ", shownmessageid = " .
-					 (isset($listItem['shownmessageid']) ? $listItem['shownmessageid'] : '0') . ";";
+					 (isset($listItem['shownmessageid']) ? $listItem['shownmessageid'] : '0') . ", agentid = " .
+					 (isset($listItem['agentid']) ? $listItem['agentid'] : '0') . ";";
 					 
 			perform_query($query, $newlink);
 		}
@@ -418,6 +422,7 @@ $can_viewthreads, $can_takeover, $mysqlprefix;
 	$result['state'] = $thread['istate'];
 	$result['typing'] = $thread['userTyping'];
 	
+	$name = "";
 	if ($banForThread) {
 		$name = htmlspecialchars(getstring('chat.client.spam.prefix'));
 	}
@@ -460,6 +465,7 @@ $can_viewthreads, $can_takeover, $mysqlprefix;
  * 		ENsoesie 	11/27/2013	Creation
  ***********/
 function get_sanitized_message($messageid) {
+	global $mysqlprefix;
 	if ($messageid != 0) {
 		$query = "select tmessage from ${mysqlprefix}chatmessage where messageid = $messageid";
 		
@@ -562,7 +568,7 @@ function start_chat($oprtoken, $threadid) {
  * Author:
  * 		ENsoesie 	9/7/2013	Creation
  ***********/
-function get_new_messages($oprtoken, $threadid, $chattoken) {
+function get_new_messages($oprtoken, $threadid, $chattoken, $istyping) {
 	$oprSession = operator_from_token($oprtoken);
 	$operatorId = $oprSession['operatorid'];
 	$deviceid = $oprSession['deviceid'];
@@ -580,6 +586,10 @@ function get_new_messages($oprtoken, $threadid, $chattoken) {
 	if ($chattoken != $thread['ltoken']) {
 		return array('errorCode' => ERROR_INVALID_CHAT_TOKEN);
 	}
+	
+	ping_thread($thread, false, $istyping);
+	check_for_reassign($thread, $operator);
+
 	
 	return get_unsynced_messages($threadid, $deviceid);
 }
@@ -630,8 +640,14 @@ function get_unsynced_messages($threadid, $deviceid) {
  *	  	Post a message from the mobile operator
  * Author:
  * 		ENsoesie 	9/7/2013	Creation
+ * Notes:
+ *		In a weird line of thinking, id variables that end with "L" represent the local
+ * 		version of the id (client) while the corresponding id ending with "R" represent the
+ *		remote version (server). This naming convention should be changed to more 
+ *		meaningful variable names.
  ***********/
 function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg) {
+	global $mysqlprefix;
 	$oprSession = operator_from_token($oprtoken);
 	$operatorId = $oprSession['operatorid'];
 	$deviceid = $oprSession['deviceid'];
@@ -695,8 +711,8 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg)
 	// Although this is like a "reverse sync", we are doing this so that we 
 	// don't have to search both the sync'ed messages and the device messages tables
 	// when searching for unsync'ed messages. 
-	// This also allows for a shorter purge period for the device messages table, while
-	// the purge period on the sync'ed messages table can be long.
+	// This also allows for a shorter purge interval for the device messages table, while
+	// the purge interval on the sync'ed messages table can be longer.
 	ack_messages($oprtoken, "$postedid");
 	
 	return array('errorCode' => ERROR_SUCCESS,
@@ -715,6 +731,7 @@ function msg_from_mobile_op($oprtoken, $threadid, $chattoken, $opMsgIdL, $opMsg)
  * 		ENsoesie 	11/6/2013	Creation
  ***********/
 function ack_messages($oprtoken, $msgList) {
+	global $mysqlprefix;
 	$oprSession = operator_from_token($oprtoken);
 	$operatorId = $oprSession['operatorid'];
 	$deviceid = $oprSession['deviceid'];
@@ -723,6 +740,7 @@ function ack_messages($oprtoken, $msgList) {
 	
 	// Create $data of the form "(messageid, deviceid), (messageid, deviceid),..."
 	$firstDataElement = true;
+	$data = "";
 	foreach($msgListArray as $msgID) {
 		if (!$firstDataElement) {
 			$data.= ", ";
@@ -895,4 +913,38 @@ function get_active_visitors_notification($oprtoken, $deviceVisitors, $stealthMo
 
 	return $out;
 }
+
+
+/**************
+ *	 Method:	
+ *		verifyparam2
+ * Description:
+ *	  	Verifies that a parameter is set with the expected 
+ * 		value. 
+ * Author:
+ * 		ENsoesie 	1/20/2014	Creation
+ * Remark: 
+ *		Borrowed from "common.php", but with the html removed.
+ ***********/
+function verifyparam2($name, $regexp, $default = null)
+{
+	if (isset($_GET[$name])) {
+		$val = $_GET[$name];
+		if (preg_match($regexp, $val))
+			return $val;
+
+	} else if (isset($_POST[$name])) {
+		$val = $_POST[$name];
+		if (preg_match($regexp, $val))
+			return $val;
+
+	} else {
+		if (isset($default))
+			return $default;
+	}
+	
+	// Parameter not validated.
+	return false;
+}
+
 ?>

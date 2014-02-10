@@ -21,7 +21,7 @@
 
 /*
  * This is the entry point of the mobile client API. 
- * It is a JSON-based REST API. All the supporting methods
+ * It is a JSON-based API. All the supporting methods
  * will return an array where appropriate and will be JSON
  * encoded here. This allows for easy migration to other standards
  */
@@ -101,8 +101,9 @@ else if ($_GET['cmd'] == 'newmessages') {
 	$oprtoken = $_GET['oprtoken'];
 	$threadid = $_GET['threadid'];
 	$chattoken = $_GET['token'];
+	$istyping = verifyparam2("typed", "/^1$/", "") == '1';
 	
-	$out = get_new_messages($oprtoken, $threadid, $chattoken);
+	$out = get_new_messages($oprtoken, $threadid, $chattoken, $istyping);
 	$jsonOut = json_encode($out);
 	echo $jsonOut;
 }
