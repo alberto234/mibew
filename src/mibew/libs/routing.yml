@@ -61,19 +61,10 @@ canned_messages:
         _access_check: Mibew\AccessControl\Check\LoggedInCheck
 
 ## Groups
-group_delete:
-    path: /operator/group/{group_id}/delete
-    defaults:
-        _controller: Mibew\Controller\GroupController::deleteAction
-        _access_check: Mibew\AccessControl\Check\PermissionsCheck
-        _access_permissions: [CAN_ADMINISTRATE]
-    requirements:
-        group_id: \d{1,10}
-
 group_add:
     path: /operator/group/add
     defaults:
-        _controller: Mibew\Controller\GroupController::showEditFormAction
+        _controller: Mibew\Controller\Group\SettingsController::showFormAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
     methods: [GET]
@@ -81,15 +72,24 @@ group_add:
 group_add_save:
     path: /operator/group/add
     defaults:
-        _controller: Mibew\Controller\GroupController::submitEditFormAction
+        _controller: Mibew\Controller\Group\SettingsController::submitFormAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
     methods: [POST]
 
+group_delete:
+    path: /operator/group/{group_id}/delete
+    defaults:
+        _controller: Mibew\Controller\Group\ManagementController::deleteAction
+        _access_check: Mibew\AccessControl\Check\PermissionsCheck
+        _access_permissions: [CAN_ADMINISTRATE]
+    requirements:
+        group_id: \d{1,10}
+
 group_edit:
     path: /operator/group/{group_id}/edit
     defaults:
-        _controller: Mibew\Controller\GroupController::showEditFormAction
+        _controller: Mibew\Controller\Group\SettingsController::showFormAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
     requirements:
@@ -99,7 +99,7 @@ group_edit:
 group_edit_save:
     path: /operator/group/{group_id}/edit
     defaults:
-        _controller: Mibew\Controller\GroupController::submitEditFormAction
+        _controller: Mibew\Controller\Group\SettingsController::submitFormAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
     requirements:
@@ -109,7 +109,7 @@ group_edit_save:
 group_members:
     path: /operator/group/{group_id}/members
     defaults:
-        _controller: Mibew\Controller\GroupController::showMembersFormAction
+        _controller: Mibew\Controller\Group\MembersController::showFormAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
     requirements:
@@ -119,7 +119,7 @@ group_members:
 group_members_save:
     path: /operator/group/{group_id}/members
     defaults:
-        _controller: Mibew\Controller\GroupController::submitMembersFormAction
+        _controller: Mibew\Controller\Group\MembersController::submitFormAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
     requirements:
@@ -129,7 +129,7 @@ group_members_save:
 groups:
     path: /operator/group
     defaults:
-        _controller: Mibew\Controller\GroupController::indexAction
+        _controller: Mibew\Controller\Group\ManagementController::indexAction
         _access_check: Mibew\AccessControl\Check\PermissionsCheck
         _access_permissions: [CAN_ADMINISTRATE]
 
@@ -146,7 +146,7 @@ history_thread:
         _controller: Mibew\Controller\HistoryController::threadAction
         _access_check: Mibew\AccessControl\Check\LoggedInCheck
     requirements:
-        thread_id: \d{1,9}
+        thread_id: \d{1,10}
 
 history_user:
     path: /operator/history/user/{user_id}
@@ -168,6 +168,118 @@ invite:
     defaults:
         _controller: Mibew\Controller\InvitationController::inviteAction
         _access_check: Mibew\AccessControl\Check\LoggedInCheck
+
+## Operators
+operator_add:
+    path: /operator/operator/add
+    defaults:
+        _controller: Mibew\Controller\Operator\ProfileController::showFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    methods: [GET]
+
+operator_add_save:
+    path: /operator/operator/add
+    defaults:
+        _controller: Mibew\Controller\Operator\ProfileController::submitFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    methods: [POST]
+
+operator_avatar:
+    path: /operator/operator/{operator_id}/avatar
+    defaults:
+        _controller: Mibew\Controller\Operator\AvatarController::showFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    requirements:
+        operator_id: \d{1,10}
+    methods: [GET]
+
+operator_avatar_delete:
+    path: /operator/operator/{operator_id}/avatar/delete
+    defaults:
+        _controller: Mibew\Controller\Operator\AvatarController::deleteAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    requirements:
+        operator_id: \d{1,10}
+
+operator_avatar_save:
+    path: /operator/operator/{operator_id}/avatar
+    defaults:
+        _controller: Mibew\Controller\Operator\AvatarController::submitFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    requirements:
+        operator_id: \d{1,10}
+    methods: [POST]
+
+operator_edit:
+    path: /operator/operator/{operator_id}/edit
+    defaults:
+        _controller: Mibew\Controller\Operator\ProfileController::showFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    requirements:
+        operator_id: \d{1,10}
+    methods: [GET]
+
+operator_edit_save:
+    path: /operator/operator/{operator_id}/edit
+    defaults:
+        _controller: Mibew\Controller\Operator\ProfileController::submitFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    requirements:
+        operator_id: \d{1,10}
+    methods: [POST]
+
+operator_enable:
+    path: /operator/operator/{operator_id}/enable
+    defaults:
+        _controller: Mibew\Controller\Operator\ManagementController::enableAction
+        _access_check: Mibew\AccessControl\Check\PermissionsCheck
+        _access_permissions: [CAN_ADMINISTRATE]
+    requirements:
+        operator_id: \d{1,10}
+
+operator_delete:
+    path: /operator/operator/{operator_id}/delete
+    defaults:
+        _controller: Mibew\Controller\Operator\ManagementController::deleteAction
+        _access_check: Mibew\AccessControl\Check\PermissionsCheck
+        _access_permissions: [CAN_ADMINISTRATE]
+    requirements:
+        operator_id: \d{1,10}
+
+operator_disable:
+    path: /operator/operator/{operator_id}/disable
+    defaults:
+        _controller: Mibew\Controller\Operator\ManagementController::disableAction
+        _access_check: Mibew\AccessControl\Check\PermissionsCheck
+        _access_permissions: [CAN_ADMINISTRATE]
+    requirements:
+        operator_id: \d{1,10}
+
+operator_groups:
+    path: /operator/operator/{operator_id}/groups
+    defaults:
+        _controller: Mibew\Controller\Operator\GroupsController::showFormAction
+        _access_check: Mibew\AccessControl\Check\LoggedInCheck
+    requirements:
+        operator_id: \d{1,10}
+    methods: [GET]
+
+operator_groups_save:
+    path: /operator/operator/{operator_id}/groups
+    defaults:
+        _controller: Mibew\Controller\Operator\GroupsController::submitFormAction
+        _access_check: Mibew\AccessControl\Check\PermissionsCheck
+        _access_permissions: [CAN_ADMINISTRATE]
+    requirements:
+        operator_id: \d{1,10}
+    methods: [POST]
+
+operators:
+    path: /operator/operator
+    defaults:
+        _controller: Mibew\Controller\Operator\ManagementController::indexAction
+        _access_check: Mibew\AccessControl\Check\PermissionsCheck
+        _access_permissions: [CAN_ADMINISTRATE]
 
 ## Password recovery
 password_recovery:
